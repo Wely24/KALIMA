@@ -1,4 +1,3 @@
-HTML
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -148,6 +147,14 @@ HTML
             <span class="bg-cyan-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">مباشر</span>
           </button>
 
+          <button onclick="switchMainTab('notifications'); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/60 to-pink-950/60 border border-purple-500/40 hover:border-purple-400 flex items-center justify-between transition group">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-bell text-purple-400 group-hover:bounce transition duration-300"></i>
+              <span class="text-xs font-bold text-purple-200">الإشعارات</span>
+            </div>
+            <span id="sidebar-notif-badge" class="hidden bg-pink-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg animate-pulse">جديد</span>
+          </button>
+
           <button onclick="openEditProfileModal(); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500 flex items-center gap-3 transition">
             <i class="fa-solid fa-user-pen text-cyan-400"></i>
             <span class="text-xs font-bold text-slate-300">تعديل الملف الشخصي (Edit Profile)</span>
@@ -182,6 +189,10 @@ HTML
       </div>
       
       <div class="flex items-center gap-2">
+        <button onclick="switchMainTab('notifications')" class="relative text-purple-400 hover:text-white p-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 text-base transition">
+          <i class="fa-solid fa-bell"></i>
+          <span id="header-notif-indicator" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-pink-500 rounded-full animate-ping"></span>
+        </button>
         <button onclick="toggleSidebar()" class="text-cyan-400 hover:text-white p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-base">
           <i class="fa-solid fa-bars-staggered"></i>
         </button>
@@ -196,16 +207,16 @@ HTML
         <div class="bg-slate-950/70 p-3.5 rounded-2xl border border-cyan-500/30 space-y-2.5 shadow-xl">
           <span class="text-[11px] font-bold text-cyan-300 flex items-center gap-1.5"><i class="fa-solid fa-user-plus text-cyan-400"></i> البحث عن أصدقاء</span>
           <div class="flex gap-2">
-            <input type="text" id="friend-search-input" placeholder="ابحث بالاسم..." class="flex-1 bg-slate-900/90 p-2.5 rounded-xl border border-cyan-500/20 text-xs text-white focus:outline-none focus:border-cyan-400 placeholder-slate-600">
-            <button onclick="alert('جاري البحث في قاعدة بيانات كَلِمَة...')" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs px-3.5 rounded-xl font-black transition flex items-center gap-1 shadow-lg">بحث</button>
+            <input type="text" id="friend-search-input" placeholder="ابحث بالاسم..." onkeydown="if(event.key==='Enter') searchFriends();" class="flex-1 bg-slate-900/90 p-2.5 rounded-xl border border-cyan-500/20 text-xs text-white focus:outline-none focus:border-cyan-400 placeholder-slate-600">
+            <button onclick="searchFriends()" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs px-3.5 rounded-xl font-black transition flex items-center gap-1 shadow-lg">بحث</button>
           </div>
+          <div id="friend-search-results" class="space-y-2"></div>
         </div>
 
-        <!-- ✍️ إضافة منشور جديد مع رفع الوسائط الخارجية (صور، لقطات شاشة، وفيديوهات) -->
+        <!-- ✍️ إضافة منشور جديد مع رفع الوسائط الخارجية -->
         <div class="bg-slate-950/70 p-4 rounded-2xl border border-purple-500/30 space-y-3 shadow-xl relative">
           <textarea id="post-input" rows="2" placeholder="اكتب كَلِمَتَك أو شارك صورة، لقطة شاشة، أو فيديو من جهازك... 📡" class="w-full bg-transparent text-xs text-white focus:outline-none resize-none placeholder-slate-600"></textarea>
           
-          <!-- معاينة الوسائط المرفوعة -->
           <div id="media-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-48 border border-purple-500/30 bg-slate-900 flex items-center justify-center">
             <button onclick="clearMediaPreview()" class="absolute top-2 left-2 z-10 bg-black/70 hover:bg-red-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs"><i class="fa-solid fa-xmark"></i></button>
             <div id="media-preview-content" class="w-full flex justify-center items-center"></div>
@@ -227,6 +238,16 @@ HTML
         </div>
       </div>
 
+      <!-- 🔔 مركز الإشعارات (طلبات الصداقة والرسائل) -->
+      <div id="page-notifications" class="hidden space-y-3">
+        <h3 class="text-xs font-bold text-purple-400 border-b border-purple-500/20 pb-2.5 flex items-center gap-2">
+          <i class="fa-solid fa-bell text-purple-400"></i> مركز الإشعارات والتنبيهات
+        </h3>
+        <div id="notifications-container" class="space-y-2.5">
+          <div class="text-center py-6 text-slate-500 text-xs">لا توجد إشعارات جديدة حالياً...</div>
+        </div>
+      </div>
+
       <!-- ❤️ التفاعلات -->
       <div id="page-likes" class="hidden space-y-3">
         <h3 class="text-xs font-bold text-cyan-400 border-b border-cyan-500/20 pb-2.5 flex items-center gap-2">
@@ -240,21 +261,17 @@ HTML
         <h3 class="text-xs font-bold text-cyan-400 border-b border-cyan-500/20 pb-2.5 flex items-center gap-2">
           <i class="fa-solid fa-comments text-cyan-400"></i> المحادثات المباشرة
         </h3>
-        <div onclick="alert('فتح غرفة المحادثة المشفرة...')" class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
-          <div class="flex items-center gap-3">
-            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Fahad" class="w-9 h-9 rounded-xl bg-slate-900 border border-cyan-400">
-            <div>
-              <p class="text-xs font-bold text-white">فهد</p>
-              <p class="text-[10px] text-slate-400">مرحباً بك في كَلِمَة!</p>
-            </div>
-          </div>
-          <span class="text-[9px] bg-cyan-500 text-black px-2 py-0.5 rounded-full font-black">نشط</span>
+        <div id="chats-list-container" class="space-y-2.5">
+          <div class="text-center py-4 text-slate-500 text-xs">جاري تحميل المحادثات...</div>
         </div>
       </div>
 
       <!-- 👤 الصفحة الشخصية -->
       <div id="page-profile" class="hidden space-y-4">
         <div class="bg-slate-950/80 p-6 rounded-3xl border border-cyan-500/30 text-center space-y-3 relative overflow-hidden">
+          <button id="profile-back-btn" onclick="viewMyOwnProfile()" class="hidden absolute top-3 right-3 text-cyan-400 hover:text-white bg-slate-900/80 w-8 h-8 rounded-xl flex items-center justify-center border border-cyan-500/30 z-10" title="رجوع">
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
           
           <div class="relative inline-block my-1">
             <img id="profile-page-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-24 h-24 rounded-3xl border-2 border-cyan-400 mx-auto object-cover bg-slate-900 shadow-2xl">
@@ -294,6 +311,14 @@ HTML
                 <i class="fa-solid fa-user-pen"></i> <span>تعديل الملف الشخصي (Edit Profile)</span>
               </button>
             </div>
+            <div id="other-profile-actions" class="hidden w-full flex gap-2">
+              <button id="friend-action-btn" onclick="sendOrRespondFriendRequest()" class="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> <span id="friend-action-label">إضافة صديق</span>
+              </button>
+              <button onclick="messageUserFromProfile()" class="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> <span>مراسلة</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -325,7 +350,7 @@ HTML
           <button onclick="toggleAiChat()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div id="ai-messages" class="h-44 overflow-y-auto text-[11px] space-y-2 no-scrollbar p-1">
-          <div class="bg-cyan-950/50 p-2.5 rounded-xl text-cyan-200 border border-cyan-500/20">أهلاً بك يا وليد! نظام كَلِمَة جاهز لخدمة فرعك وإدارتك للوسائط ⚡</div>
+          <div class="bg-cyan-950/50 p-2.5 rounded-xl text-cyan-200 border border-cyan-500/20">أهلاً بك يا وليد! نظام كَلِمَة جاهز لخدمة فرعك وإدارتك للوسائط والإشعارات ⚡</div>
         </div>
         <div class="flex gap-1.5">
           <input type="text" id="ai-input" placeholder="اطلب شيئاً..." class="flex-1 bg-slate-900/90 p-2 rounded-xl border border-cyan-500/20 text-[11px] text-white focus:outline-none">
@@ -339,6 +364,12 @@ HTML
       <button id="nav-home" onclick="switchMainTab('home')" class="flex flex-col items-center text-cyan-400 transition">
         <i class="fa-solid fa-house-signal text-base"></i>
         <span class="text-[9px] mt-1 font-bold">الرئيسية</span>
+      </button>
+
+      <button id="nav-notifications" onclick="switchMainTab('notifications')" class="relative flex flex-col items-center text-slate-600 hover:text-purple-400 transition">
+        <i class="fa-solid fa-bell text-base"></i>
+        <span class="text-[9px] mt-1 font-bold">الإشعارات</span>
+        <span id="nav-notif-dot" class="hidden absolute top-0 right-3 w-2 h-2 bg-pink-500 rounded-full"></span>
       </button>
 
       <button id="nav-likes" onclick="switchMainTab('likes')" class="flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
@@ -431,6 +462,24 @@ HTML
     </div>
   </div>
 
+  <!-- 💬 نافذة المحادثة المباشرة مع الرد السريع -->
+  <div id="modal-chat-window" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center p-0 md:p-4 z-50">
+    <div class="holo-panel w-full max-w-md h-screen md:h-[720px] rounded-none md:rounded-[35px] flex flex-col overflow-hidden">
+      <div class="bg-slate-950/90 p-4 flex items-center justify-between border-b border-cyan-500/20 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+          <button onclick="closeChatWindow()" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-arrow-right"></i></button>
+          <img id="chat-partner-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
+          <span id="chat-partner-name" class="text-xs font-bold text-white">اسم المستخدم</span>
+        </div>
+      </div>
+      <div id="chat-messages-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2.5"></div>
+      <div class="p-3 border-t border-slate-800 flex gap-2 items-center bg-slate-950/80">
+        <input type="text" id="chat-message-input" placeholder="اكتب ردك على الرسالة..." onkeydown="if(event.key==='Enter') sendChatMessage();" class="flex-1 bg-slate-900 p-3 rounded-2xl border border-slate-800 text-xs text-white focus:outline-none focus:border-cyan-400">
+        <button onclick="sendChatMessage()" class="bg-cyan-500 text-black w-10 h-10 rounded-2xl font-black flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
+      </div>
+    </div>
+  </div>
+
   <!-- 📸 نافذة رفع الأفاتار -->
   <div id="modal-avatar" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50">
     <div class="holo-panel p-6 rounded-3xl border border-cyan-500/40 w-full max-w-sm space-y-4">
@@ -470,6 +519,18 @@ HTML
     let profileUnsubscribe = null;
     let isViewingOwnProfile = true;
     let selectedFileToUpload = null;
+
+    // --- حالة عرض البروفايلات (نفسي أو صديق) ---
+    let activeProfileUid = null;
+    let viewedProfileUnsubscribe = null;
+    let activeProfilePostsUnsubscribe = null;
+
+    // --- حالة الإشعارات والدردشة ---
+    let notificationsUnsubscribe = null;
+    let chatsListUnsubscribe = null;
+    let activeChatUnsubscribe = null;
+    let activeChatId = null;
+    let activeChatPartnerUid = null;
 
     function switchAuthTab(tab) {
       const loginForm = document.getElementById('login-form');
@@ -513,6 +574,9 @@ HTML
           avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`,
           isVerified: false,
           isPrivate: false,
+          friends: [],
+          friendRequests: [],
+          sentRequests: [],
           followers: [],
           following: [],
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -534,11 +598,19 @@ HTML
         document.getElementById('step-main').classList.remove('hidden');
 
         loadUserData(user);
-        loadLivePosts(); 
-        loadMyProfilePosts(user.uid);
+        loadLivePosts();
+        activeProfileUid = user.uid;
+        loadProfilePosts(user.uid);
+        loadChatsList();
+        loadNotifications(user.uid);
       } else {
         document.getElementById('step-auth').classList.remove('hidden');
         document.getElementById('step-main').classList.add('hidden');
+        if (viewedProfileUnsubscribe) { viewedProfileUnsubscribe(); viewedProfileUnsubscribe = null; }
+        if (activeProfilePostsUnsubscribe) { activeProfilePostsUnsubscribe(); activeProfilePostsUnsubscribe = null; }
+        if (chatsListUnsubscribe) { chatsListUnsubscribe(); chatsListUnsubscribe = null; }
+        if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
+        if (notificationsUnsubscribe) { notificationsUnsubscribe(); notificationsUnsubscribe = null; }
       }
     });
 
@@ -583,16 +655,301 @@ HTML
       if (verifiedTag) verifiedTag.classList.toggle('hidden', !isVerified);
     }
 
-    function renderProfilePage(isSelf) {
-      isViewingOwnProfile = isSelf;
-      if (auth.currentUser && currentUserProfile) {
-        updateUserUI(currentUserProfile.nickname, currentUserProfile.username, currentUserProfile.avatar, currentUserProfile.bio, currentUserProfile.isVerified, currentUserProfile.isPrivate);
-        loadMyProfilePosts(auth.currentUser.uid);
-      }
+    function viewMyOwnProfile() {
+      if (viewedProfileUnsubscribe) { viewedProfileUnsubscribe(); viewedProfileUnsubscribe = null; }
+      isViewingOwnProfile = true;
+      const user = auth.currentUser;
+      if (!user || !currentUserProfile) return;
+
+      activeProfileUid = user.uid;
+      updateUserUI(currentUserProfile.nickname, currentUserProfile.username, currentUserProfile.avatar, currentUserProfile.bio, currentUserProfile.isVerified, currentUserProfile.isPrivate);
+      document.getElementById('followers-count').innerText = (currentUserProfile.followers || []).length;
+      document.getElementById('following-count').innerText = (currentUserProfile.following || []).length;
+
+      document.getElementById('profile-back-btn').classList.add('hidden');
+      document.getElementById('self-avatar-edit-btn').classList.remove('hidden');
+      document.getElementById('self-settings-btn').classList.remove('hidden');
+      document.getElementById('self-profile-actions').classList.remove('hidden');
+      document.getElementById('other-profile-actions').classList.add('hidden');
+
+      loadProfilePosts(user.uid);
       switchMainTab('profile');
     }
 
-    function viewMyOwnProfile() { renderProfilePage(true); }
+    function viewUserProfile(uid) {
+      const user = auth.currentUser;
+      if (!user) return;
+      if (uid === user.uid) { viewMyOwnProfile(); return; }
+
+      isViewingOwnProfile = false;
+      activeProfileUid = uid;
+
+      document.getElementById('profile-back-btn').classList.remove('hidden');
+      document.getElementById('self-avatar-edit-btn').classList.add('hidden');
+      document.getElementById('self-settings-btn').classList.add('hidden');
+      document.getElementById('self-profile-actions').classList.add('hidden');
+      document.getElementById('other-profile-actions').classList.remove('hidden');
+
+      if (viewedProfileUnsubscribe) { viewedProfileUnsubscribe(); viewedProfileUnsubscribe = null; }
+
+      viewedProfileUnsubscribe = db.collection('users').doc(uid).onSnapshot(doc => {
+        if (activeProfileUid !== uid) return;
+        if (!doc.exists) return;
+        const data = doc.data();
+
+        updateUserUI(data.nickname, data.username, data.avatar, data.bio, data.isVerified, data.isPrivate);
+        document.getElementById('followers-count').innerText = (data.followers || []).length;
+        document.getElementById('following-count').innerText = (data.following || []).length;
+
+        // تحديث حالة زر الصداقة بناءً على الحالة الحالية
+        updateFriendButtonState(user.uid, uid, data);
+      });
+
+      loadProfilePosts(uid);
+      switchMainTab('profile');
+    }
+
+    function updateFriendButtonState(myUid, targetUid, targetData) {
+      const btnLabel = document.getElementById('friend-action-label');
+      const friendBtn = document.getElementById('friend-action-btn');
+
+      const friends = targetData.friends || [];
+      const friendRequests = targetData.friendRequests || [];
+      const sentRequests = targetData.sentRequests || [];
+
+      if (friends.includes(myUid)) {
+        btnLabel.textContent = 'إزالة الصداقة';
+        friendBtn.className = "flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 to-rose-700 text-white text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2";
+      } else if (friendRequests.includes(myUid)) {
+        btnLabel.textContent = 'تم إرسال الطلب';
+        friendBtn.className = "flex-1 py-2.5 rounded-2xl bg-slate-800 text-slate-400 text-xs font-black shadow-lg flex items-center justify-center gap-2 cursor-not-allowed";
+      } else {
+        btnLabel.textContent = 'إضافة صديق';
+        friendBtn.className = "flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2";
+      }
+    }
+
+    async function sendOrRespondFriendRequest() {
+      const user = auth.currentUser;
+      if (!user || !activeProfileUid || activeProfileUid === user.uid) return;
+      const targetUid = activeProfileUid;
+
+      try {
+        const targetRef = db.collection('users').doc(targetUid);
+        const myRef = db.collection('users').doc(user.uid);
+        
+        const targetDoc = await targetRef.get();
+        const myDoc = await myRef.get();
+        if (!targetDoc.exists || !myDoc.exists) return;
+
+        const targetData = targetDoc.data();
+        const myData = myDoc.data();
+
+        const friends = targetData.friends || [];
+        const friendRequests = targetData.friendRequests || [];
+
+        if (friends.includes(user.uid)) {
+          // إزالة الصداقة من الطرفين
+          await targetRef.update({
+            friends: firebase.firestore.FieldValue.arrayRemove(user.uid),
+            followers: firebase.firestore.FieldValue.arrayRemove(user.uid)
+          });
+          await myRef.update({
+            friends: firebase.firestore.FieldValue.arrayRemove(targetUid),
+            following: firebase.firestore.FieldValue.arrayRemove(targetUid)
+          });
+          alert("تمت إزالة الصداقة.");
+        } else if (friendRequests.includes(user.uid)) {
+          alert("لقد قمت مسبقاً بإرسال طلب صداقة لهذا المستخدم.");
+        } else {
+          // إرسال طلب صداقة وإشعار جديد
+          await targetRef.update({
+            friendRequests: firebase.firestore.FieldValue.arrayUnion(user.uid)
+          });
+
+          // إضافة إشعار طلب صداقة
+          await db.collection('notifications').add({
+            recipientUid: targetUid,
+            senderUid: user.uid,
+            senderName: myData.nickname || 'مستخدم',
+            senderAvatar: myData.avatar || '',
+            type: 'friend_request',
+            message: `أرسل لك طلب صداقة 🤝`,
+            read: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          alert("تم إرسال طلب الصداقة بنجاح ⚡!");
+        }
+      } catch (err) { alert(err.message); }
+    }
+
+    // --- نظام الإشعارات والقبول والرفض ---
+    function loadNotifications(myUid) {
+      if (notificationsUnsubscribe) notificationsUnsubscribe();
+
+      notificationsUnsubscribe = db.collection('notifications')
+        .where('recipientUid', '==', myUid)
+        .orderBy('createdAt', 'desc')
+        .onSnapshot(snapshot => {
+          const container = document.getElementById('notifications-container');
+          const sidebarBadge = document.getElementById('sidebar-notif-badge');
+          const headerIndicator = document.getElementById('header-notif-indicator');
+          const navDot = document.getElementById('nav-notif-dot');
+
+          if (snapshot.empty) {
+            container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">لا توجد إشعارات جديدة حالياً...</div>';
+            sidebarBadge.classList.add('hidden');
+            headerIndicator.classList.add('hidden');
+            navDot.classList.add('hidden');
+            return;
+          }
+
+          let hasUnread = false;
+          let html = '';
+
+          snapshot.forEach(doc => {
+            const n = doc.data();
+            const notifId = doc.id;
+            if (!n.read) hasUnread = true;
+
+            if (n.type === 'friend_request') {
+              html += `
+                <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-purple-500/30 flex items-center justify-between shadow-lg">
+                  <div class="flex items-center gap-3">
+                    <img src="${n.senderAvatar}" class="w-9 h-9 rounded-xl border border-purple-400 object-cover bg-slate-900">
+                    <div>
+                      <p class="text-xs font-bold text-white">${n.senderName}</p>
+                      <p class="text-[10px] text-purple-300">${n.message}</p>
+                    </div>
+                  </div>
+                  <div class="flex gap-1.5">
+                    <button onclick="respondFriendRequest('${notifId}', '${n.senderUid}', 'accept')" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-[10px] px-3 py-1.5 rounded-xl font-black shadow transition hover:scale-105">قبول ✅</button>
+                    <button onclick="respondFriendRequest('${notifId}', '${n.senderUid}', 'reject')" class="bg-red-500/20 border border-red-500/40 text-red-400 text-[10px] px-2.5 py-1.5 rounded-xl font-bold transition hover:bg-red-500 hover:text-white">رفض ❌</button>
+                  </div>
+                </div>
+              `;
+            } else if (n.type === 'message') {
+              html += `
+                <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-cyan-500/30 flex items-center justify-between shadow-lg">
+                  <div class="flex items-center gap-3">
+                    <img src="${n.senderAvatar}" class="w-9 h-9 rounded-xl border border-cyan-400 object-cover bg-slate-900">
+                    <div>
+                      <p class="text-xs font-bold text-white">${n.senderName}</p>
+                      <p class="text-[10px] text-cyan-300 truncate max-w-[150px]">رسالة: ${n.message}</p>
+                    </div>
+                  </div>
+                  <button onclick="openChatWithUser('${n.senderUid}', '${n.senderName}', '${n.senderAvatar}')" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[10px] px-3 py-1.5 rounded-xl font-black shadow transition">الرد 💬</button>
+                </div>
+              `;
+            }
+          });
+
+          container.innerHTML = html;
+          sidebarBadge.classList.toggle('hidden', !hasUnread);
+          headerIndicator.classList.toggle('hidden', !hasUnread);
+          navDot.classList.toggle('hidden', !hasUnread);
+        });
+    }
+
+    async function respondFriendRequest(notifId, senderUid, action) {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        const myRef = db.collection('users').doc(user.uid);
+        const senderRef = db.collection('users').doc(senderUid);
+
+        if (action === 'accept') {
+          await myRef.update({
+            friendRequests: firebase.firestore.FieldValue.arrayRemove(senderUid),
+            friends: firebase.firestore.FieldValue.arrayUnion(senderUid),
+            followers: firebase.firestore.FieldValue.arrayUnion(senderUid)
+          });
+          await senderRef.update({
+            friends: firebase.firestore.FieldValue.arrayUnion(user.uid),
+            following: firebase.firestore.FieldValue.arrayUnion(user.uid)
+          });
+
+          // إشعار بقبول الصداقة للطرف الآخر
+          const myData = (await myRef.get()).data();
+          await db.collection('notifications').add({
+            recipientUid: senderUid,
+            senderUid: user.uid,
+            senderName: myData.nickname || 'مستخدم',
+            senderAvatar: myData.avatar || '',
+            type: 'friend_accepted',
+            message: `وافق على طلب الصداقة وأصبحتم أصدقاء! 🎉`,
+            read: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          alert("تم قبول طلب الصداقة بنجاح 🎉!");
+        } else {
+          await myRef.update({
+            friendRequests: firebase.firestore.FieldValue.arrayRemove(senderUid)
+          });
+          alert("تم رفض طلب الصداقة.");
+        }
+
+        // حذف الإشعار بعد التفاعل
+        await db.collection('notifications').doc(notifId).delete();
+      } catch (err) { alert(err.message); }
+    }
+
+    function messageUserFromProfile() {
+      if (!activeProfileUid) return;
+      const name = document.getElementById('profile-page-name').childNodes[0].nodeValue.trim();
+      const avatar = document.getElementById('profile-page-avatar').src;
+      openChatWithUser(activeProfileUid, name, avatar);
+    }
+
+    // --- البحث عن أصدقاء ---
+    async function searchFriends() {
+      const term = document.getElementById('friend-search-input').value.trim().toLowerCase();
+      const resultsContainer = document.getElementById('friend-search-results');
+      const user = auth.currentUser;
+      if (!term) { resultsContainer.innerHTML = ''; return; }
+
+      resultsContainer.innerHTML = '<div class="text-center py-3 text-slate-500 text-[11px] animate-pulse">جاري البحث...</div>';
+
+      try {
+        const snapshot = await db.collection('users').limit(100).get();
+        const matches = [];
+        snapshot.forEach(doc => {
+          if (doc.id === user.uid) return;
+          const data = doc.data();
+          const nickname = (data.nickname || '').toLowerCase();
+          const username = (data.username || '').toLowerCase();
+          if (nickname.includes(term) || username.includes(term)) {
+            matches.push({ uid: doc.id, ...data });
+          }
+        });
+        renderSearchResults(matches);
+      } catch (err) {
+        resultsContainer.innerHTML = `<div class="text-center py-3 text-red-400 text-[11px]">تعذر البحث: ${err.message}</div>`;
+      }
+    }
+
+    function renderSearchResults(users) {
+      const resultsContainer = document.getElementById('friend-search-results');
+      if (users.length === 0) {
+        resultsContainer.innerHTML = '<div class="text-center py-3 text-slate-500 text-[11px]">لا توجد نتائج مطابقة.</div>';
+        return;
+      }
+      resultsContainer.innerHTML = users.map(u => `
+        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2.5 cursor-pointer" onclick="viewUserProfile('${u.uid}')">
+            <img src="${u.avatar}" class="w-9 h-9 rounded-xl border border-cyan-400/50 bg-slate-950 object-cover">
+            <div>
+              <p class="text-xs font-bold text-white">${u.nickname}</p>
+              <p class="text-[10px] text-cyan-300/70">@${u.username}</p>
+            </div>
+          </div>
+          <button onclick="viewUserProfile('${u.uid}')" class="text-cyan-400 hover:text-white text-[10px] font-bold bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1.5 rounded-lg">عرض البروفايل</button>
+        </div>
+      `).join('');
+    }
 
     function openEditProfileModal() { document.getElementById('modal-edit-profile').classList.remove('hidden'); }
     function closeEditProfileModal() { document.getElementById('modal-edit-profile').classList.add('hidden'); }
@@ -659,8 +1016,6 @@ HTML
           const file = selectedFileToUpload;
           const safeFileName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
           const filePath = `posts_media/${user.uid}_${Date.now()}_${safeFileName}`;
-          
-          // استخدام storage().ref() مع bucket الافتراضي بشكل صحيح
           const fileRef = storage.ref().child(filePath);
           
           const snapshot = await fileRef.put(file);
@@ -689,7 +1044,7 @@ HTML
         clearMediaPreview();
       } catch (err) {
         console.error("Upload error details:", err);
-        alert("تعذر رفع الملف أو النشر. تأكد من أن حجم الملف مناسب وأن قواعد تخزين فايربيس (Storage Security Rules) مسموحة للقراءة والكتابة.\n\nخطأ: " + err.message);
+        alert("تعذر رفع الملف أو النشر. تأكد من أن قواعد تخزين فايربيس مسموحة.\n\nخطأ: " + err.message);
       } finally {
         publishBtn.disabled = false;
         publishBtn.innerText = "نشر ⚡";
@@ -747,18 +1102,21 @@ HTML
       });
     }
 
-    function loadMyProfilePosts(userId) {
-      db.collection('posts').where('uid', '==', userId).onSnapshot(snapshot => {
-        if (!isViewingOwnProfile) return;
+    function loadProfilePosts(userId) {
+      if (activeProfilePostsUnsubscribe) { activeProfilePostsUnsubscribe(); activeProfilePostsUnsubscribe = null; }
+
+      activeProfilePostsUnsubscribe = db.collection('posts').where('uid', '==', userId).onSnapshot(snapshot => {
+        if (activeProfileUid !== userId) return;
+        const currentUid = auth.currentUser ? auth.currentUser.uid : null;
         const container = document.getElementById('my-posts-container');
         document.getElementById('my-posts-count').innerText = snapshot.size;
         container.innerHTML = '';
         if (snapshot.empty) {
-          container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لم تقم بنشر أي كلمة أو وسائط بعد!</div>';
+          container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد منشورات هنا بعد!</div>';
           return;
         }
         snapshot.forEach(doc => {
-          container.innerHTML += createPostCardHTML(doc.id, doc.data(), userId);
+          container.innerHTML += createPostCardHTML(doc.id, doc.data(), currentUid);
         });
       });
     }
@@ -808,10 +1166,10 @@ HTML
       return `
         <div class="bg-slate-950/80 p-4 rounded-3xl border border-slate-800 space-y-3 hover:border-cyan-500/30 transition relative shadow-lg">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="${isOwner ? 'viewMyOwnProfile()' : `viewUserProfile('${post.uid}')`}">
               <img src="${post.authorAvatar}" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
               <div>
-                <h4 class="text-xs font-bold text-white">${post.authorName}</h4>
+                <h4 class="text-xs font-bold text-white hover:underline">${post.authorName}</h4>
                 <p class="text-[9px] text-cyan-300/70 truncate max-w-[180px]">${post.authorBio || 'عضو في كَلِمَة'}</p>
               </div>
             </div>
@@ -919,16 +1277,19 @@ HTML
 
     function switchMainTab(tab) {
       const pageFeed = document.getElementById('page-feed');
+      const pageNotifications = document.getElementById('page-notifications');
       const pageLikes = document.getElementById('page-likes');
       const pageChat = document.getElementById('page-chat');
       const pageProfile = document.getElementById('page-profile');
 
       pageFeed.classList.add('hidden');
+      pageNotifications.classList.add('hidden');
       pageLikes.classList.add('hidden');
       pageChat.classList.add('hidden');
       pageProfile.classList.add('hidden');
 
       if (tab === 'home') pageFeed.classList.remove('hidden');
+      else if (tab === 'notifications') pageNotifications.classList.remove('hidden');
       else if (tab === 'likes') pageLikes.classList.remove('hidden');
       else if (tab === 'chat') pageChat.classList.remove('hidden');
       else if (tab === 'profile') pageProfile.classList.remove('hidden');
@@ -965,6 +1326,148 @@ HTML
       try {
         await db.collection('users').doc(user.uid).update({ isPrivate: isPrivate });
       } catch (err) { alert(err.message); }
+    }
+
+    // --- نظام الدردشة المباشرة وإشعارات الرسائل ---
+    function getChatId(uid1, uid2) {
+      return [uid1, uid2].sort().join('_');
+    }
+
+    async function openChatWithUser(targetUid, targetName, targetAvatar) {
+      const user = auth.currentUser;
+      if (!user || !targetUid || targetUid === user.uid) return;
+
+      const chatId = getChatId(user.uid, targetUid);
+      const chatRef = db.collection('chats').doc(chatId);
+
+      try {
+        const chatDoc = await chatRef.get();
+        if (!chatDoc.exists) {
+          await chatRef.set({
+            participants: [user.uid, targetUid],
+            lastMessage: '',
+            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+
+        if (!targetName || !targetAvatar) {
+          const targetDoc = await db.collection('users').doc(targetUid).get();
+          const data = targetDoc.exists ? targetDoc.data() : {};
+          targetName = targetName || data.nickname || 'مستخدم كَلِمَة';
+          targetAvatar = targetAvatar || data.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user';
+        }
+
+        activeChatId = chatId;
+        activeChatPartnerUid = targetUid;
+        document.getElementById('chat-partner-name').textContent = targetName;
+        document.getElementById('chat-partner-avatar').src = targetAvatar;
+        document.getElementById('modal-chat-window').classList.remove('hidden');
+
+        if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
+        activeChatUnsubscribe = chatRef.collection('messages').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
+          const container = document.getElementById('chat-messages-container');
+          container.innerHTML = '';
+          if (snapshot.empty) {
+            container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">ابدأ المحادثة الآن، أرسل أول رسالة! 💬</div>';
+            return;
+          }
+          snapshot.forEach(doc => {
+            const msg = doc.data();
+            const isMine = msg.senderId === user.uid;
+            container.innerHTML += `
+              <div class="flex ${isMine ? 'justify-start' : 'justify-end'}">
+                <div class="max-w-[75%] px-3 py-2 rounded-2xl text-xs ${isMine ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black rounded-br-none' : 'bg-slate-900 text-white border border-slate-800 rounded-bl-none'}">
+                  ${msg.text}
+                </div>
+              </div>`;
+          });
+          container.scrollTop = container.scrollHeight;
+        });
+      } catch (err) { alert(err.message); }
+    }
+
+    function closeChatWindow() {
+      if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
+      activeChatId = null;
+      activeChatPartnerUid = null;
+      document.getElementById('modal-chat-window').classList.add('hidden');
+    }
+
+    async function sendChatMessage() {
+      const user = auth.currentUser;
+      const input = document.getElementById('chat-message-input');
+      const text = input.value.trim();
+      if (!user || !activeChatId || !activeChatPartnerUid || !text) return;
+
+      input.value = '';
+      const chatRef = db.collection('chats').doc(activeChatId);
+
+      try {
+        // إرسال الرسالة في المحادثة وتحديثها
+        await chatRef.collection('messages').add({
+          senderId: user.uid,
+          text: text,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await chatRef.update({
+          lastMessage: text,
+          lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // إرسال إشعار رسالة جديدة ورد للطرف الآخر
+        const myData = currentUserProfile || (await db.collection('users').doc(user.uid).get()).data();
+        await db.collection('notifications').add({
+          recipientUid: activeChatPartnerUid,
+          senderUid: user.uid,
+          senderName: myData.nickname || 'مستخدم',
+          senderAvatar: myData.avatar || '',
+          type: 'message',
+          message: text,
+          read: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+      } catch (err) { alert(err.message); }
+    }
+
+    function loadChatsList() {
+      const user = auth.currentUser;
+      if (!user) return;
+      if (chatsListUnsubscribe) { chatsListUnsubscribe(); chatsListUnsubscribe = null; }
+
+      chatsListUnsubscribe = db.collection('chats')
+        .where('participants', 'array-contains', user.uid)
+        .orderBy('lastMessageAt', 'desc')
+        .onSnapshot(async snapshot => {
+          const container = document.getElementById('chats-list-container');
+          if (snapshot.empty) {
+            container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد محادثات بعد.. ابحث عن صديق وابدأ الدردشة!</div>';
+            return;
+          }
+
+          const rows = await Promise.all(snapshot.docs.map(async doc => {
+            const chat = doc.data();
+            const partnerUid = chat.participants.find(uid => uid !== user.uid);
+            if (!partnerUid) return '';
+            const partnerDoc = await db.collection('users').doc(partnerUid).get();
+            const partner = partnerDoc.exists ? partnerDoc.data() : { nickname: 'مستخدم كَلِمَة', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=user' };
+
+            return `
+              <div onclick="openChatWithUser('${partnerUid}', '${(partner.nickname || '').replace(/'/g, "\\'")}', '${partner.avatar || ''}')" class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+                <div class="flex items-center gap-3">
+                  <img src="${partner.avatar}" class="w-9 h-9 rounded-xl bg-slate-900 border border-cyan-400 object-cover">
+                  <div>
+                    <p class="text-xs font-bold text-white">${partner.nickname}</p>
+                    <p class="text-[10px] text-slate-400 truncate max-w-[160px]">${chat.lastMessage || 'ابدأ المحادثة الآن'}</p>
+                  </div>
+                </div>
+              </div>`;
+          }));
+
+          container.innerHTML = rows.join('');
+        }, err => {
+          document.getElementById('chats-list-container').innerHTML = `<div class="text-center py-4 text-red-400 text-[11px]">تعذر تحميل المحادثات: ${err.message}</div>`;
+        });
     }
   </script>
 </body>
