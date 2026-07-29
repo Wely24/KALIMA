@@ -147,14 +147,6 @@
             <span class="bg-cyan-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">مباشر</span>
           </button>
 
-          <button onclick="switchMainTab('notifications'); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/60 to-pink-950/60 border border-purple-500/40 hover:border-purple-400 flex items-center justify-between transition group">
-            <div class="flex items-center gap-3">
-              <i class="fa-solid fa-bell text-purple-400 group-hover:bounce transition duration-300"></i>
-              <span class="text-xs font-bold text-purple-200">الإشعارات</span>
-            </div>
-            <span id="sidebar-notif-badge" class="hidden bg-pink-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg animate-pulse">جديد</span>
-          </button>
-
           <button onclick="openEditProfileModal(); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500 flex items-center gap-3 transition">
             <i class="fa-solid fa-user-pen text-cyan-400"></i>
             <span class="text-xs font-bold text-slate-300">تعديل الملف الشخصي (Edit Profile)</span>
@@ -189,10 +181,6 @@
       </div>
       
       <div class="flex items-center gap-2">
-        <button onclick="switchMainTab('notifications')" class="relative text-purple-400 hover:text-white p-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 text-base transition">
-          <i class="fa-solid fa-bell"></i>
-          <span id="header-notif-indicator" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-pink-500 rounded-full animate-ping"></span>
-        </button>
         <button onclick="toggleSidebar()" class="text-cyan-400 hover:text-white p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-base">
           <i class="fa-solid fa-bars-staggered"></i>
         </button>
@@ -213,10 +201,11 @@
           <div id="friend-search-results" class="space-y-2"></div>
         </div>
 
-        <!-- ✍️ إضافة منشور جديد مع رفع الوسائط الخارجية -->
+        <!-- ✍️ إضافة منشور جديد مع رفع الوسائط الخارجية (صور، لقطات شاشة، وفيديوهات) -->
         <div class="bg-slate-950/70 p-4 rounded-2xl border border-purple-500/30 space-y-3 shadow-xl relative">
           <textarea id="post-input" rows="2" placeholder="اكتب كَلِمَتَك أو شارك صورة، لقطة شاشة، أو فيديو من جهازك... 📡" class="w-full bg-transparent text-xs text-white focus:outline-none resize-none placeholder-slate-600"></textarea>
           
+          <!-- معاينة الوسائط المرفوعة -->
           <div id="media-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-48 border border-purple-500/30 bg-slate-900 flex items-center justify-center">
             <button onclick="clearMediaPreview()" class="absolute top-2 left-2 z-10 bg-black/70 hover:bg-red-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs"><i class="fa-solid fa-xmark"></i></button>
             <div id="media-preview-content" class="w-full flex justify-center items-center"></div>
@@ -235,16 +224,6 @@
 
         <div id="posts-container" class="space-y-3">
           <div class="text-center py-6 text-slate-500 text-xs animate-pulse">جاري جلب آخر الكلمات والوسائط...</div>
-        </div>
-      </div>
-
-      <!-- 🔔 مركز الإشعارات (طلبات الصداقة والرسائل) -->
-      <div id="page-notifications" class="hidden space-y-3">
-        <h3 class="text-xs font-bold text-purple-400 border-b border-purple-500/20 pb-2.5 flex items-center gap-2">
-          <i class="fa-solid fa-bell text-purple-400"></i> مركز الإشعارات والتنبيهات
-        </h3>
-        <div id="notifications-container" class="space-y-2.5">
-          <div class="text-center py-6 text-slate-500 text-xs">لا توجد إشعارات جديدة حالياً...</div>
         </div>
       </div>
 
@@ -312,8 +291,8 @@
               </button>
             </div>
             <div id="other-profile-actions" class="hidden w-full flex gap-2">
-              <button id="friend-action-btn" onclick="sendOrRespondFriendRequest()" class="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-user-plus"></i> <span id="friend-action-label">إضافة صديق</span>
+              <button id="follow-toggle-btn" onclick="toggleFollowUser()" class="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> <span id="follow-toggle-label">إضافة صديق</span>
               </button>
               <button onclick="messageUserFromProfile()" class="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2">
                 <i class="fa-solid fa-paper-plane"></i> <span>مراسلة</span>
@@ -350,7 +329,7 @@
           <button onclick="toggleAiChat()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div id="ai-messages" class="h-44 overflow-y-auto text-[11px] space-y-2 no-scrollbar p-1">
-          <div class="bg-cyan-950/50 p-2.5 rounded-xl text-cyan-200 border border-cyan-500/20">أهلاً بك يا وليد! نظام كَلِمَة جاهز لخدمة فرعك وإدارتك للوسائط والإشعارات ⚡</div>
+          <div class="bg-cyan-950/50 p-2.5 rounded-xl text-cyan-200 border border-cyan-500/20">أهلاً بك يا وليد! نظام كَلِمَة جاهز لخدمة فرعك وإدارتك للوسائط ⚡</div>
         </div>
         <div class="flex gap-1.5">
           <input type="text" id="ai-input" placeholder="اطلب شيئاً..." class="flex-1 bg-slate-900/90 p-2 rounded-xl border border-cyan-500/20 text-[11px] text-white focus:outline-none">
@@ -364,12 +343,6 @@
       <button id="nav-home" onclick="switchMainTab('home')" class="flex flex-col items-center text-cyan-400 transition">
         <i class="fa-solid fa-house-signal text-base"></i>
         <span class="text-[9px] mt-1 font-bold">الرئيسية</span>
-      </button>
-
-      <button id="nav-notifications" onclick="switchMainTab('notifications')" class="relative flex flex-col items-center text-slate-600 hover:text-purple-400 transition">
-        <i class="fa-solid fa-bell text-base"></i>
-        <span class="text-[9px] mt-1 font-bold">الإشعارات</span>
-        <span id="nav-notif-dot" class="hidden absolute top-0 right-3 w-2 h-2 bg-pink-500 rounded-full"></span>
       </button>
 
       <button id="nav-likes" onclick="switchMainTab('likes')" class="flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
@@ -462,7 +435,7 @@
     </div>
   </div>
 
-  <!-- 💬 نافذة المحادثة المباشرة مع الرد السريع -->
+  <!-- 💬 نافذة المحادثة المباشرة -->
   <div id="modal-chat-window" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center p-0 md:p-4 z-50">
     <div class="holo-panel w-full max-w-md h-screen md:h-[720px] rounded-none md:rounded-[35px] flex flex-col overflow-hidden">
       <div class="bg-slate-950/90 p-4 flex items-center justify-between border-b border-cyan-500/20 backdrop-blur-md">
@@ -474,7 +447,7 @@
       </div>
       <div id="chat-messages-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2.5"></div>
       <div class="p-3 border-t border-slate-800 flex gap-2 items-center bg-slate-950/80">
-        <input type="text" id="chat-message-input" placeholder="اكتب ردك على الرسالة..." onkeydown="if(event.key==='Enter') sendChatMessage();" class="flex-1 bg-slate-900 p-3 rounded-2xl border border-slate-800 text-xs text-white focus:outline-none focus:border-cyan-400">
+        <input type="text" id="chat-message-input" placeholder="اكتب رسالتك..." onkeydown="if(event.key==='Enter') sendChatMessage();" class="flex-1 bg-slate-900 p-3 rounded-2xl border border-slate-800 text-xs text-white focus:outline-none focus:border-cyan-400">
         <button onclick="sendChatMessage()" class="bg-cyan-500 text-black w-10 h-10 rounded-2xl font-black flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
     </div>
@@ -525,8 +498,7 @@
     let viewedProfileUnsubscribe = null;
     let activeProfilePostsUnsubscribe = null;
 
-    // --- حالة الإشعارات والدردشة ---
-    let notificationsUnsubscribe = null;
+    // --- حالة الدردشة المباشرة ---
     let chatsListUnsubscribe = null;
     let activeChatUnsubscribe = null;
     let activeChatId = null;
@@ -574,9 +546,6 @@
           avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`,
           isVerified: false,
           isPrivate: false,
-          friends: [],
-          friendRequests: [],
-          sentRequests: [],
           followers: [],
           following: [],
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -602,7 +571,6 @@
         activeProfileUid = user.uid;
         loadProfilePosts(user.uid);
         loadChatsList();
-        loadNotifications(user.uid);
       } else {
         document.getElementById('step-auth').classList.remove('hidden');
         document.getElementById('step-main').classList.add('hidden');
@@ -610,7 +578,6 @@
         if (activeProfilePostsUnsubscribe) { activeProfilePostsUnsubscribe(); activeProfilePostsUnsubscribe = null; }
         if (chatsListUnsubscribe) { chatsListUnsubscribe(); chatsListUnsubscribe = null; }
         if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
-        if (notificationsUnsubscribe) { notificationsUnsubscribe(); notificationsUnsubscribe = null; }
       }
     });
 
@@ -701,199 +668,44 @@
         document.getElementById('followers-count').innerText = (data.followers || []).length;
         document.getElementById('following-count').innerText = (data.following || []).length;
 
-        // تحديث حالة زر الصداقة بناءً على الحالة الحالية
-        updateFriendButtonState(user.uid, uid, data);
+        const isFollowing = (data.followers || []).includes(user.uid);
+        const followLabel = document.getElementById('follow-toggle-label');
+        const followBtn = document.getElementById('follow-toggle-btn');
+        followLabel.textContent = isFollowing ? 'إلغاء المتابعة' : 'إضافة صديق';
+        followBtn.classList.toggle('bg-gradient-to-r', true);
+        followBtn.classList.toggle('from-cyan-500', !isFollowing);
+        followBtn.classList.toggle('to-blue-600', !isFollowing);
+        followBtn.classList.toggle('from-slate-700', isFollowing);
+        followBtn.classList.toggle('to-slate-800', isFollowing);
       });
 
       loadProfilePosts(uid);
       switchMainTab('profile');
     }
 
-    function updateFriendButtonState(myUid, targetUid, targetData) {
-      const btnLabel = document.getElementById('friend-action-label');
-      const friendBtn = document.getElementById('friend-action-btn');
-
-      const friends = targetData.friends || [];
-      const friendRequests = targetData.friendRequests || [];
-      const sentRequests = targetData.sentRequests || [];
-
-      if (friends.includes(myUid)) {
-        btnLabel.textContent = 'إزالة الصداقة';
-        friendBtn.className = "flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 to-rose-700 text-white text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2";
-      } else if (friendRequests.includes(myUid)) {
-        btnLabel.textContent = 'تم إرسال الطلب';
-        friendBtn.className = "flex-1 py-2.5 rounded-2xl bg-slate-800 text-slate-400 text-xs font-black shadow-lg flex items-center justify-center gap-2 cursor-not-allowed";
-      } else {
-        btnLabel.textContent = 'إضافة صديق';
-        friendBtn.className = "flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2";
-      }
-    }
-
-    async function sendOrRespondFriendRequest() {
+    async function toggleFollowUser() {
       const user = auth.currentUser;
       if (!user || !activeProfileUid || activeProfileUid === user.uid) return;
       const targetUid = activeProfileUid;
 
       try {
         const targetRef = db.collection('users').doc(targetUid);
-        const myRef = db.collection('users').doc(user.uid);
-        
         const targetDoc = await targetRef.get();
-        const myDoc = await myRef.get();
-        if (!targetDoc.exists || !myDoc.exists) return;
+        if (!targetDoc.exists) return;
+        const isFollowing = (targetDoc.data().followers || []).includes(user.uid);
 
-        const targetData = targetDoc.data();
-        const myData = myDoc.data();
-
-        const friends = targetData.friends || [];
-        const friendRequests = targetData.friendRequests || [];
-
-        if (friends.includes(user.uid)) {
-          // إزالة الصداقة من الطرفين
-          await targetRef.update({
-            friends: firebase.firestore.FieldValue.arrayRemove(user.uid),
-            followers: firebase.firestore.FieldValue.arrayRemove(user.uid)
-          });
-          await myRef.update({
-            friends: firebase.firestore.FieldValue.arrayRemove(targetUid),
-            following: firebase.firestore.FieldValue.arrayRemove(targetUid)
-          });
-          alert("تمت إزالة الصداقة.");
-        } else if (friendRequests.includes(user.uid)) {
-          alert("لقد قمت مسبقاً بإرسال طلب صداقة لهذا المستخدم.");
-        } else {
-          // إرسال طلب صداقة وإشعار جديد
-          await targetRef.update({
-            friendRequests: firebase.firestore.FieldValue.arrayUnion(user.uid)
-          });
-
-          // إضافة إشعار طلب صداقة
-          await db.collection('notifications').add({
-            recipientUid: targetUid,
-            senderUid: user.uid,
-            senderName: myData.nickname || 'مستخدم',
-            senderAvatar: myData.avatar || '',
-            type: 'friend_request',
-            message: `أرسل لك طلب صداقة 🤝`,
-            read: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-
-          alert("تم إرسال طلب الصداقة بنجاح ⚡!");
-        }
-      } catch (err) { alert(err.message); }
-    }
-
-    // --- نظام الإشعارات والقبول والرفض ---
-    function loadNotifications(myUid) {
-      if (notificationsUnsubscribe) notificationsUnsubscribe();
-
-      notificationsUnsubscribe = db.collection('notifications')
-        .where('recipientUid', '==', myUid)
-        .orderBy('createdAt', 'desc')
-        .onSnapshot(snapshot => {
-          const container = document.getElementById('notifications-container');
-          const sidebarBadge = document.getElementById('sidebar-notif-badge');
-          const headerIndicator = document.getElementById('header-notif-indicator');
-          const navDot = document.getElementById('nav-notif-dot');
-
-          if (snapshot.empty) {
-            container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">لا توجد إشعارات جديدة حالياً...</div>';
-            sidebarBadge.classList.add('hidden');
-            headerIndicator.classList.add('hidden');
-            navDot.classList.add('hidden');
-            return;
-          }
-
-          let hasUnread = false;
-          let html = '';
-
-          snapshot.forEach(doc => {
-            const n = doc.data();
-            const notifId = doc.id;
-            if (!n.read) hasUnread = true;
-
-            if (n.type === 'friend_request') {
-              html += `
-                <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-purple-500/30 flex items-center justify-between shadow-lg">
-                  <div class="flex items-center gap-3">
-                    <img src="${n.senderAvatar}" class="w-9 h-9 rounded-xl border border-purple-400 object-cover bg-slate-900">
-                    <div>
-                      <p class="text-xs font-bold text-white">${n.senderName}</p>
-                      <p class="text-[10px] text-purple-300">${n.message}</p>
-                    </div>
-                  </div>
-                  <div class="flex gap-1.5">
-                    <button onclick="respondFriendRequest('${notifId}', '${n.senderUid}', 'accept')" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-[10px] px-3 py-1.5 rounded-xl font-black shadow transition hover:scale-105">قبول ✅</button>
-                    <button onclick="respondFriendRequest('${notifId}', '${n.senderUid}', 'reject')" class="bg-red-500/20 border border-red-500/40 text-red-400 text-[10px] px-2.5 py-1.5 rounded-xl font-bold transition hover:bg-red-500 hover:text-white">رفض ❌</button>
-                  </div>
-                </div>
-              `;
-            } else if (n.type === 'message') {
-              html += `
-                <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-cyan-500/30 flex items-center justify-between shadow-lg">
-                  <div class="flex items-center gap-3">
-                    <img src="${n.senderAvatar}" class="w-9 h-9 rounded-xl border border-cyan-400 object-cover bg-slate-900">
-                    <div>
-                      <p class="text-xs font-bold text-white">${n.senderName}</p>
-                      <p class="text-[10px] text-cyan-300 truncate max-w-[150px]">رسالة: ${n.message}</p>
-                    </div>
-                  </div>
-                  <button onclick="openChatWithUser('${n.senderUid}', '${n.senderName}', '${n.senderAvatar}')" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[10px] px-3 py-1.5 rounded-xl font-black shadow transition">الرد 💬</button>
-                </div>
-              `;
-            }
-          });
-
-          container.innerHTML = html;
-          sidebarBadge.classList.toggle('hidden', !hasUnread);
-          headerIndicator.classList.toggle('hidden', !hasUnread);
-          navDot.classList.toggle('hidden', !hasUnread);
-        });
-    }
-
-    async function respondFriendRequest(notifId, senderUid, action) {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      try {
         const myRef = db.collection('users').doc(user.uid);
-        const senderRef = db.collection('users').doc(senderUid);
+        const batch = db.batch();
 
-        if (action === 'accept') {
-          await myRef.update({
-            friendRequests: firebase.firestore.FieldValue.arrayRemove(senderUid),
-            friends: firebase.firestore.FieldValue.arrayUnion(senderUid),
-            followers: firebase.firestore.FieldValue.arrayUnion(senderUid)
-          });
-          await senderRef.update({
-            friends: firebase.firestore.FieldValue.arrayUnion(user.uid),
-            following: firebase.firestore.FieldValue.arrayUnion(user.uid)
-          });
-
-          // إشعار بقبول الصداقة للطرف الآخر
-          const myData = (await myRef.get()).data();
-          await db.collection('notifications').add({
-            recipientUid: senderUid,
-            senderUid: user.uid,
-            senderName: myData.nickname || 'مستخدم',
-            senderAvatar: myData.avatar || '',
-            type: 'friend_accepted',
-            message: `وافق على طلب الصداقة وأصبحتم أصدقاء! 🎉`,
-            read: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-
-          alert("تم قبول طلب الصداقة بنجاح 🎉!");
+        if (isFollowing) {
+          batch.update(targetRef, { followers: firebase.firestore.FieldValue.arrayRemove(user.uid) });
+          batch.update(myRef, { following: firebase.firestore.FieldValue.arrayRemove(targetUid) });
         } else {
-          await myRef.update({
-            friendRequests: firebase.firestore.FieldValue.arrayRemove(senderUid)
-          });
-          alert("تم رفض طلب الصداقة.");
+          batch.update(targetRef, { followers: firebase.firestore.FieldValue.arrayUnion(user.uid) });
+          batch.update(myRef, { following: firebase.firestore.FieldValue.arrayUnion(targetUid) });
         }
 
-        // حذف الإشعار بعد التفاعل
-        await db.collection('notifications').doc(notifId).delete();
+        await batch.commit();
       } catch (err) { alert(err.message); }
     }
 
@@ -1016,6 +828,8 @@
           const file = selectedFileToUpload;
           const safeFileName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
           const filePath = `posts_media/${user.uid}_${Date.now()}_${safeFileName}`;
+          
+          // استخدام storage().ref() مع bucket الافتراضي بشكل صحيح
           const fileRef = storage.ref().child(filePath);
           
           const snapshot = await fileRef.put(file);
@@ -1044,7 +858,7 @@
         clearMediaPreview();
       } catch (err) {
         console.error("Upload error details:", err);
-        alert("تعذر رفع الملف أو النشر. تأكد من أن قواعد تخزين فايربيس مسموحة.\n\nخطأ: " + err.message);
+        alert("تعذر رفع الملف أو النشر. تأكد من أن حجم الملف مناسب وأن قواعد تخزين فايربيس (Storage Security Rules) مسموحة للقراءة والكتابة.\n\nخطأ: " + err.message);
       } finally {
         publishBtn.disabled = false;
         publishBtn.innerText = "نشر ⚡";
@@ -1277,19 +1091,16 @@
 
     function switchMainTab(tab) {
       const pageFeed = document.getElementById('page-feed');
-      const pageNotifications = document.getElementById('page-notifications');
       const pageLikes = document.getElementById('page-likes');
       const pageChat = document.getElementById('page-chat');
       const pageProfile = document.getElementById('page-profile');
 
       pageFeed.classList.add('hidden');
-      pageNotifications.classList.add('hidden');
       pageLikes.classList.add('hidden');
       pageChat.classList.add('hidden');
       pageProfile.classList.add('hidden');
 
       if (tab === 'home') pageFeed.classList.remove('hidden');
-      else if (tab === 'notifications') pageNotifications.classList.remove('hidden');
       else if (tab === 'likes') pageLikes.classList.remove('hidden');
       else if (tab === 'chat') pageChat.classList.remove('hidden');
       else if (tab === 'profile') pageProfile.classList.remove('hidden');
@@ -1328,7 +1139,7 @@
       } catch (err) { alert(err.message); }
     }
 
-    // --- نظام الدردشة المباشرة وإشعارات الرسائل ---
+    // --- نظام الدردشة المباشرة ---
     function getChatId(uid1, uid2) {
       return [uid1, uid2].sort().join('_');
     }
@@ -1350,6 +1161,7 @@
           });
         }
 
+        // إن لم تتوفر بيانات الاسم/الصورة (مثلاً عند الفتح من قائمة المحادثات)، اجلبها من ملف المستخدم
         if (!targetName || !targetAvatar) {
           const targetDoc = await db.collection('users').doc(targetUid).get();
           const data = targetDoc.exists ? targetDoc.data() : {};
@@ -1397,13 +1209,12 @@
       const user = auth.currentUser;
       const input = document.getElementById('chat-message-input');
       const text = input.value.trim();
-      if (!user || !activeChatId || !activeChatPartnerUid || !text) return;
+      if (!user || !activeChatId || !text) return;
 
       input.value = '';
       const chatRef = db.collection('chats').doc(activeChatId);
 
       try {
-        // إرسال الرسالة في المحادثة وتحديثها
         await chatRef.collection('messages').add({
           senderId: user.uid,
           text: text,
@@ -1413,20 +1224,6 @@
           lastMessage: text,
           lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        // إرسال إشعار رسالة جديدة ورد للطرف الآخر
-        const myData = currentUserProfile || (await db.collection('users').doc(user.uid).get()).data();
-        await db.collection('notifications').add({
-          recipientUid: activeChatPartnerUid,
-          senderUid: user.uid,
-          senderName: myData.nickname || 'مستخدم',
-          senderAvatar: myData.avatar || '',
-          type: 'message',
-          message: text,
-          read: false,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
       } catch (err) { alert(err.message); }
     }
 
