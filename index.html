@@ -1,0 +1,971 @@
+HTML
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>كَلِمَة | KALIMA 2060</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;500;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+  
+  <!-- Firebase (Compat Libraries) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+  <style>
+    * { font-family: 'Cairo', sans-serif; }
+    .font-futuristic { font-family: 'Orbitron', sans-serif; }
+
+    body {
+      background: radial-gradient(circle at 50% 50%, #0d0b26 0%, #03000a 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .cyber-grid {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(0, 242, 254, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 242, 254, 0.05) 1px, transparent 1px);
+    }
+
+    .holo-panel {
+      background: rgba(10, 15, 30, 0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 242, 254, 0.25);
+      box-shadow: 0 0 35px rgba(0, 242, 254, 0.15), inset 0 0 15px rgba(189, 0, 255, 0.1);
+      position: relative;
+    }
+
+    .holo-panel::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px; right: -1px; bottom: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, #00f2fe, #4facfe, #bd00ff);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .neon-text-cyan { text-shadow: 0 0 10px rgba(0, 242, 254, 0.8), 0 0 20px rgba(0, 242, 254, 0.4); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(0, 242, 254, 0.4); }
+      50% { box-shadow: 0 0 30px rgba(189, 0, 255, 0.8); }
+    }
+    .cyber-btn-glow { animation: pulseGlow 3s infinite ease-in-out; }
+
+    .avatar-action-btn {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+    }
+    .avatar-action-btn:hover { transform: scale(1.15); }
+  </style>
+</head>
+<body class="cyber-grid text-slate-100 flex items-center justify-center p-0 md:p-4 select-none overflow-hidden relative min-h-screen">
+
+  <div class="absolute top-1/4 -left-20 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none"></div>
+  <div class="absolute bottom-1/4 -right-20 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+
+  <!-- 1️⃣ شاشة تسجيل الدخول والتسجيل -->
+  <div id="step-auth" class="holo-panel p-8 rounded-3xl w-full max-w-md z-20 relative">
+    <div class="text-center mb-8">
+      <div class="inline-block p-3 rounded-2xl bg-cyan-500/10 border border-cyan-400/30 mb-2">
+        <i class="fa-solid fa-microchip text-3xl text-cyan-400 animate-pulse"></i>
+      </div>
+      <h1 class="text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-500 neon-text-cyan">كَلِمَة</h1>
+      <p class="text-[10px] text-cyan-300/70 tracking-widest uppercase mt-1">الجيل القادم من التواصل الهولوجرامي 🌌</p>
+    </div>
+
+    <div class="flex bg-slate-950/80 p-1.5 rounded-2xl mb-6 border border-cyan-500/30">
+      <button id="btn-tab-login" onclick="switchAuthTab('login')" class="w-1/2 py-2 text-center font-bold text-xs rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-lg transition duration-300">تسجيل الدخول</button>
+      <button id="btn-tab-register" onclick="switchAuthTab('register')" class="w-1/2 py-2 text-center font-bold text-xs rounded-xl text-cyan-300 hover:text-white transition duration-300">هوية جديدة</button>
+    </div>
+
+    <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+      <div>
+        <label class="block text-[10px] uppercase font-bold mb-1 text-cyan-300">البريد الإلكتروني</label>
+        <input type="email" id="login-email" placeholder="cyber@kalima.ai" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-cyan-500/30 focus:outline-none focus:border-cyan-400 text-white text-xs shadow-inner">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase font-bold mb-1 text-cyan-300">كلمة المرور</label>
+        <input type="password" id="login-password" placeholder="••••••••" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-cyan-500/30 focus:outline-none focus:border-cyan-400 text-white text-xs shadow-inner">
+      </div>
+      <button type="submit" class="w-full cyber-btn-glow bg-gradient-to-r from-cyan-400 via-indigo-600 to-purple-600 text-black font-black py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition duration-300 text-xs uppercase tracking-wider">
+        دخول لتطبيق كَلِمَة ⚡
+      </button>
+    </form>
+
+    <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+      <div>
+        <label class="block text-[10px] uppercase font-bold mb-1 text-purple-300">الاسم المستعار (النيك نيم)</label>
+        <input type="text" id="reg-username" placeholder="مثال: Shefo" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase font-bold mb-1 text-purple-300">البريد الإلكتروني</label>
+        <input type="email" id="reg-email" placeholder="cyber@kalima.ai" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase font-bold mb-1 text-purple-300">كلمة المرور</label>
+        <input type="password" id="reg-password" placeholder="••••••••" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner">
+      </div>
+      <button type="submit" class="w-full cyber-btn-glow bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition duration-300 text-xs uppercase tracking-wider">
+        إنشاء حساب في كَلِمَة 🧬
+      </button>
+    </form>
+  </div>
+
+  <!-- 2️⃣ الشاشة الرئيسية للتطبيق -->
+  <div id="step-main" class="hidden w-full max-w-md h-screen md:h-[720px] holo-panel rounded-none md:rounded-[35px] flex flex-col justify-between overflow-hidden relative z-20 shadow-2xl">
+    
+    <!-- ☰ القائمة الجانبية -->
+    <div id="sidebar-drawer" class="fixed inset-y-0 right-0 w-80 bg-slate-950/95 backdrop-blur-3xl border-l border-cyan-500/30 z-50 transform translate-x-full transition-transform duration-300 ease-in-out p-6 flex flex-col justify-between shadow-2xl">
+      <div>
+        <div class="flex justify-between items-center mb-8 pb-4 border-b border-cyan-500/20">
+          <span class="font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 text-base">قائمة كَلِمَة</span>
+          <button onclick="toggleSidebar()" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div class="space-y-4">
+          <button onclick="switchMainTab('chat'); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/60 to-indigo-950/60 border border-cyan-500/40 hover:border-cyan-400 flex items-center justify-between transition group">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-satellite-dish text-cyan-400 group-hover:rotate-45 transition duration-300"></i>
+              <span class="text-xs font-bold text-cyan-200">الدردشة الخاصة (DM)</span>
+            </div>
+            <span class="bg-cyan-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">مباشر</span>
+          </button>
+
+          <button onclick="openEditProfileModal(); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500 flex items-center gap-3 transition">
+            <i class="fa-solid fa-user-pen text-cyan-400"></i>
+            <span class="text-xs font-bold text-slate-300">تعديل الملف الشخصي (Edit Profile)</span>
+          </button>
+
+          <button onclick="openSettingsModal(); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-purple-500 flex items-center gap-3 transition">
+            <i class="fa-solid fa-gear text-purple-400"></i>
+            <span class="text-xs font-bold text-slate-300">إعدادات الحساب والخصوصية ⚙️</span>
+          </button>
+        </div>
+      </div>
+
+      <button onclick="logout()" class="w-full p-3.5 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-black flex items-center justify-center gap-2 font-black transition text-xs">
+        <i class="fa-solid fa-power-off"></i>
+        <span>تسجيل الخروج من كَلِمَة</span>
+      </button>
+    </div>
+
+    <!-- الهيدر العلوي -->
+    <div class="bg-slate-950/80 p-4 flex justify-between items-center border-b border-cyan-500/20 z-10 backdrop-blur-md">
+      <div class="flex items-center gap-3 cursor-pointer group" onclick="viewMyOwnProfile()">
+        <div class="relative">
+          <img id="main-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-11 h-11 rounded-2xl border-2 border-cyan-400 object-cover bg-slate-900 shadow-lg group-hover:scale-105 transition">
+          <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-cyan-400 border-2 border-slate-950 rounded-full animate-ping"></span>
+        </div>
+        <div>
+          <h3 id="main-nickname" class="font-bold text-xs text-white flex items-center gap-1">
+            مستخدم كَلِمَة <span id="main-verified-badge" class="hidden text-cyan-400"><i class="fa-solid fa-circle-check text-xs"></i></span>
+          </h3>
+          <p id="main-header-username" class="text-[10px] text-cyan-300/80 truncate max-w-[130px]">@username</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <button onclick="toggleSidebar()" class="text-cyan-400 hover:text-white p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-base">
+          <i class="fa-solid fa-bars-staggered"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div id="content-area" class="flex-1 p-4 overflow-y-auto no-scrollbar space-y-4 relative">
+      
+      <!-- 🏠 الخلاصة والتغذية العامة -->
+      <div id="page-feed" class="space-y-4">
+        <div class="bg-slate-950/70 p-3.5 rounded-2xl border border-cyan-500/30 space-y-2.5 shadow-xl">
+          <span class="text-[11px] font-bold text-cyan-300 flex items-center gap-1.5"><i class="fa-solid fa-user-plus text-cyan-400"></i> البحث عن أصدقاء</span>
+          <div class="flex gap-2">
+            <input type="text" id="friend-search-input" placeholder="ابحث بالاسم..." class="flex-1 bg-slate-900/90 p-2.5 rounded-xl border border-cyan-500/20 text-xs text-white focus:outline-none focus:border-cyan-400 placeholder-slate-600">
+            <button onclick="alert('جاري البحث في قاعدة بيانات كَلِمَة...')" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs px-3.5 rounded-xl font-black transition flex items-center gap-1 shadow-lg">بحث</button>
+          </div>
+        </div>
+
+        <!-- ✍️ إضافة منشور جديد مع رفع الوسائط الخارجية (صور، لقطات شاشة، وفيديوهات) -->
+        <div class="bg-slate-950/70 p-4 rounded-2xl border border-purple-500/30 space-y-3 shadow-xl relative">
+          <textarea id="post-input" rows="2" placeholder="اكتب كَلِمَتَك أو شارك صورة، لقطة شاشة، أو فيديو من جهازك... 📡" class="w-full bg-transparent text-xs text-white focus:outline-none resize-none placeholder-slate-600"></textarea>
+          
+          <!-- معاينة الوسائط المرفوعة -->
+          <div id="media-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-48 border border-purple-500/30 bg-slate-900 flex items-center justify-center">
+            <button onclick="clearMediaPreview()" class="absolute top-2 left-2 z-10 bg-black/70 hover:bg-red-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs"><i class="fa-solid fa-xmark"></i></button>
+            <div id="media-preview-content" class="w-full flex justify-center items-center"></div>
+          </div>
+
+          <div class="flex justify-between items-center border-t border-slate-800/80 pt-2.5">
+            <div class="flex items-center gap-2">
+              <input type="file" id="post-media-file" accept="image/*,video/*" onchange="handleMediaSelect(event)" class="hidden">
+              <button onclick="document.getElementById('post-media-file').click()" class="text-cyan-400 hover:text-cyan-300 text-xs px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-photo-film"></i> <span>رفع صورة / سكرين / فيديو</span>
+              </button>
+            </div>
+            <button id="publish-btn" onclick="publishNewPost()" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs px-4 py-2 rounded-xl font-black shadow-lg transition hover:scale-105">نشر ⚡</button>
+          </div>
+        </div>
+
+        <div id="posts-container" class="space-y-3">
+          <div class="text-center py-6 text-slate-500 text-xs animate-pulse">جاري جلب آخر الكلمات والوسائط...</div>
+        </div>
+      </div>
+
+      <!-- ❤️ التفاعلات -->
+      <div id="page-likes" class="hidden space-y-3">
+        <h3 class="text-xs font-bold text-cyan-400 border-b border-cyan-500/20 pb-2.5 flex items-center gap-2">
+          <i class="fa-solid fa-heart-pulse text-pink-500"></i> التفاعلات والمشاركات
+        </h3>
+        <p class="text-xs text-slate-400">التفاعلات الحية متوفرة مباشرة على منشورات السلسلة الرئيسية والصفحة الشخصية.</p>
+      </div>
+
+      <!-- 💬 الدردشات -->
+      <div id="page-chat" class="hidden space-y-3">
+        <h3 class="text-xs font-bold text-cyan-400 border-b border-cyan-500/20 pb-2.5 flex items-center gap-2">
+          <i class="fa-solid fa-comments text-cyan-400"></i> المحادثات المباشرة
+        </h3>
+        <div onclick="alert('فتح غرفة المحادثة المشفرة...')" class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
+          <div class="flex items-center gap-3">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Fahad" class="w-9 h-9 rounded-xl bg-slate-900 border border-cyan-400">
+            <div>
+              <p class="text-xs font-bold text-white">فهد</p>
+              <p class="text-[10px] text-slate-400">مرحباً بك في كَلِمَة!</p>
+            </div>
+          </div>
+          <span class="text-[9px] bg-cyan-500 text-black px-2 py-0.5 rounded-full font-black">نشط</span>
+        </div>
+      </div>
+
+      <!-- 👤 الصفحة الشخصية -->
+      <div id="page-profile" class="hidden space-y-4">
+        <div class="bg-slate-950/80 p-6 rounded-3xl border border-cyan-500/30 text-center space-y-3 relative overflow-hidden">
+          
+          <div class="relative inline-block my-1">
+            <img id="profile-page-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-24 h-24 rounded-3xl border-2 border-cyan-400 mx-auto object-cover bg-slate-900 shadow-2xl">
+            
+            <button id="self-avatar-edit-btn" onclick="openAvatarModal()" class="avatar-action-btn absolute -bottom-2 -right-2 border border-cyan-400/50 text-cyan-400 hover:text-white w-8 h-8 rounded-2xl text-xs font-black shadow-xl flex items-center justify-center" title="تغيير الصورة">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button id="self-settings-btn" onclick="openSettingsModal()" class="avatar-action-btn absolute -bottom-2 -left-2 border border-purple-500/50 text-purple-400 hover:text-white w-8 h-8 rounded-2xl text-xs font-black shadow-xl flex items-center justify-center" title="الإعدادات">
+              <i class="fa-solid fa-gear"></i>
+            </button>
+          </div>
+
+          <div>
+            <h2 id="profile-page-name" class="font-black text-base text-white flex items-center justify-center gap-1">
+              مستخدم كَلِمَة
+            </h2>
+            <p id="profile-page-username" class="text-[11px] text-purple-400 font-mono">@username</p>
+            <p id="profile-display-bio" class="text-xs text-cyan-300/90 font-medium mt-1">"لا يوجد نبذة حتى الآن..."</p>
+            <p id="profile-verified-tag" class="hidden text-[10px] text-cyan-400 font-bold mt-1"><i class="fa-solid fa-circle-check"></i> حساب موثّق رسمياً</p>
+          </div>
+
+          <div class="flex justify-center items-center gap-6 pt-2 border-t border-slate-800/80">
+            <div class="text-center">
+              <span id="followers-count" class="block font-black text-sm text-cyan-400">0</span>
+              <span class="text-[10px] text-slate-400">المتابعون</span>
+            </div>
+            <div class="w-px h-6 bg-slate-800"></div>
+            <div class="text-center">
+              <span id="following-count" class="block font-black text-sm text-purple-400">0</span>
+              <span class="text-[10px] text-slate-400">يتابع</span>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <div id="self-profile-actions" class="w-full">
+              <button onclick="openEditProfileModal()" class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 text-white text-xs font-black shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-pen"></i> <span>تعديل الملف الشخصي (Edit Profile)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 🔥 منشورات هذا الحساب الشخصية -->
+        <div class="bg-slate-950/80 p-5 rounded-3xl border border-cyan-500/30 space-y-3">
+          <h3 class="text-xs font-bold text-cyan-400 border-b border-cyan-500/20 pb-2 flex items-center justify-between">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-square-rss"></i> منشورات ووسائط الحساب</span>
+            <span id="my-posts-count" class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-mono">0</span>
+          </h3>
+
+          <div id="my-posts-container" class="space-y-3">
+            <div class="text-center py-4 text-slate-500 text-xs">جاري تحميل المنشورات...</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 🤖 الذكاء الاصطناعي -->
+    <div class="absolute bottom-20 left-4 z-40">
+      <button onclick="toggleAiChat()" class="w-12 h-12 rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 text-black flex items-center justify-center shadow-2xl hover:scale-110 transition border border-cyan-300/50 cyber-btn-glow">
+        <i class="fa-solid fa-brain text-xl text-white"></i>
+      </button>
+      
+      <div id="ai-chat-box" class="hidden absolute bottom-16 left-0 w-72 bg-slate-950 border border-cyan-500/40 rounded-3xl p-4 shadow-2xl space-y-3 backdrop-blur-3xl z-50">
+        <div class="flex justify-between items-center border-b border-cyan-500/20 pb-2">
+          <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5"><i class="fa-solid fa-microchip"></i> مساعد كَلِمَة الذكي</span>
+          <button onclick="toggleAiChat()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="ai-messages" class="h-44 overflow-y-auto text-[11px] space-y-2 no-scrollbar p-1">
+          <div class="bg-cyan-950/50 p-2.5 rounded-xl text-cyan-200 border border-cyan-500/20">أهلاً بك يا وليد! نظام كَلِمَة جاهز لخدمة فرعك وإدارتك للوسائط ⚡</div>
+        </div>
+        <div class="flex gap-1.5">
+          <input type="text" id="ai-input" placeholder="اطلب شيئاً..." class="flex-1 bg-slate-900/90 p-2 rounded-xl border border-cyan-500/20 text-[11px] text-white focus:outline-none">
+          <button onclick="sendAiMessage()" class="bg-cyan-500 text-black text-xs px-3 rounded-xl font-black"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🔻 الشريط السفلي -->
+    <div class="bg-slate-950/90 border-t border-cyan-500/20 flex justify-around p-3.5 z-10 backdrop-blur-2xl">
+      <button id="nav-home" onclick="switchMainTab('home')" class="flex flex-col items-center text-cyan-400 transition">
+        <i class="fa-solid fa-house-signal text-base"></i>
+        <span class="text-[9px] mt-1 font-bold">الرئيسية</span>
+      </button>
+
+      <button id="nav-likes" onclick="switchMainTab('likes')" class="flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
+        <i class="fa-solid fa-heart-pulse text-base"></i>
+        <span class="text-[9px] mt-1 font-bold">التفاعلات</span>
+      </button>
+
+      <button id="nav-profile" onclick="viewMyOwnProfile()" class="flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
+        <i class="fa-solid fa-id-badge text-base"></i>
+        <span class="text-[9px] mt-1 font-bold">الملف الشخصي</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ✏️ نافذة تعديل البروفايل -->
+  <div id="modal-edit-profile" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+    <div class="holo-panel p-6 rounded-3xl border border-cyan-500/40 w-full max-w-sm space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b border-cyan-500/20 pb-2">
+        <h3 class="text-xs font-bold text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-user-pen"></i> تعديل الملف الشخصي (Edit Profile)</h3>
+        <button onclick="closeEditProfileModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-cyan-300 mb-1">الاسم المستعار (Nickname)</label>
+        <input type="text" id="edit-nickname" placeholder="الاسم الظاهر..." class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-400">
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-purple-300 mb-1">اسم المستخدم (Username / @Handle)</label>
+        <div class="relative">
+          <span class="absolute right-3 top-2.5 text-xs text-slate-500">@</span>
+          <input type="text" id="edit-username" placeholder="username" class="w-full pr-7 p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-purple-400 font-mono">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-slate-300 mb-1">النبذة عني (Bio)</label>
+        <textarea id="edit-bio" rows="3" placeholder="اكتب نبذة مميزة عنك وعن محتواك..." class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-400 resize-none"></textarea>
+      </div>
+
+      <div class="pt-2 flex gap-2">
+        <button id="save-profile-btn" onclick="saveProfileChanges()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg hover:opacity-90 transition">
+          حفظ التغيرات 💾
+        </button>
+        <button onclick="closeEditProfileModal()" class="py-2.5 px-4 rounded-xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✏️ نافذة تعديل نص المنشور -->
+  <div id="modal-edit-post" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+    <div class="holo-panel p-6 rounded-3xl border border-cyan-500/40 w-full max-w-sm space-y-4">
+      <div class="flex justify-between items-center border-b border-cyan-500/20 pb-2">
+        <h3 class="text-xs font-bold text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-pen-to-square"></i> تعديل نص المنشور</h3>
+        <button onclick="closeEditPostModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <input type="hidden" id="editing-post-id">
+      <div>
+        <label class="block text-[10px] font-bold text-cyan-300 mb-1">محتوى المنشور الجديد</label>
+        <textarea id="edit-post-content" rows="4" class="w-full p-3 rounded-xl bg-slate-900 border border-cyan-500/30 text-xs text-white focus:outline-none focus:border-cyan-400 resize-none"></textarea>
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button onclick="savePostEdit()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg hover:opacity-90 transition">حفظ التعديل 💾</button>
+        <button onclick="closeEditPostModal()" class="py-2.5 px-4 rounded-xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⚙️ نافذة الإعدادات -->
+  <div id="modal-settings" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+    <div class="holo-panel p-6 rounded-3xl border border-purple-500/40 w-full max-w-sm space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b border-purple-500/20 pb-2">
+        <h3 class="text-xs font-bold text-purple-400 flex items-center gap-2"><i class="fa-solid fa-sliders"></i> إعدادات الخصوصية والأمان</h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 flex justify-between items-center">
+        <div>
+          <p class="text-xs font-bold text-white">خصوصية الحساب</p>
+          <p class="text-[9px] text-slate-400" id="privacy-desc">عام (يمكن للجميع رؤية منشوراتك)</p>
+        </div>
+        <select id="setting-privacy" onchange="togglePrivacySetting()" class="bg-slate-950 border border-cyan-500/40 text-cyan-300 text-xs rounded-xl p-2 focus:outline-none">
+          <option value="public">عام (Public) 🌐</option>
+          <option value="private">خاص (Private) 🔒</option>
+        </select>
+      </div>
+
+      <button onclick="closeSettingsModal()" class="w-full py-2.5 rounded-2xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition mt-2">إغلاق</button>
+    </div>
+  </div>
+
+  <!-- 📸 نافذة رفع الأفاتار -->
+  <div id="modal-avatar" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+    <div class="holo-panel p-6 rounded-3xl border border-cyan-500/40 w-full max-w-sm space-y-4">
+      <div class="flex justify-between items-center border-b border-cyan-500/20 pb-2">
+        <h3 class="text-xs font-bold text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-dna"></i> اختيار الصورة الشخصية</h3>
+        <button onclick="closeAvatarModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="flex flex-col items-center justify-center py-2">
+        <img id="avatar-preview" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-20 h-20 rounded-2xl border-2 border-cyan-400 object-cover bg-slate-900 shadow-2xl mb-2">
+      </div>
+      <div class="space-y-1.5">
+        <input type="file" id="avatar-file" accept="image/*" onchange="handleAvatarUpload(event)" class="hidden">
+        <button id="avatar-upload-btn" onclick="document.getElementById('avatar-file').click()" class="w-full p-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black flex items-center justify-center gap-2 transition shadow-lg">
+          <i class="fa-solid fa-upload"></i> اختر صورة من جهازك
+        </button>
+      </div>
+      <button onclick="closeAvatarModal()" class="w-full py-2.5 rounded-2xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition">إلغاء</button>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBYygXroU_zF4MfqqgWbzVqk9hHjUCWJ1w",
+      authDomain: "dchatapp-3b550.firebaseapp.com",
+      projectId: "dchatapp-3b550",
+      storageBucket: "dchatapp-3b550.firebasestorage.app",
+      messagingSenderId: "746933745019",
+      appId: "1:746933745019:web:d2117fd43861816e6ef9de"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    let currentUserProfile = null;
+    let profileUnsubscribe = null;
+    let isViewingOwnProfile = true;
+    let selectedFileToUpload = null;
+
+    function switchAuthTab(tab) {
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const btnLogin = document.getElementById('btn-tab-login');
+      const btnRegister = document.getElementById('btn-tab-register');
+
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+        btnLogin.className = "w-1/2 py-2 text-center font-bold text-xs rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-lg transition duration-300";
+        btnRegister.className = "w-1/2 py-2 text-center font-bold text-xs rounded-xl text-cyan-300 hover:text-white transition duration-300";
+      } else {
+        loginForm.classList.add('hidden');
+        registerForm.classList.remove('hidden');
+        btnRegister.className = "w-1/2 py-2 text-center font-bold text-xs rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg transition duration-300";
+        btnLogin.className = "w-1/2 py-2 text-center font-bold text-xs rounded-xl text-cyan-300 hover:text-white transition duration-300";
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      try {
+        await auth.signInWithEmailAndPassword(document.getElementById('login-email').value.trim(), document.getElementById('login-password').value);
+      } catch (err) { alert(err.message); }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      try {
+        const userCred = await auth.createUserWithEmailAndPassword(document.getElementById('reg-email').value.trim(), document.getElementById('reg-password').value);
+        const nickname = document.getElementById('reg-username').value.trim();
+        const uid = userCred.user.uid;
+
+        await userCred.user.updateProfile({ displayName: nickname });
+
+        await db.collection('users').doc(uid).set({
+          nickname: nickname,
+          username: 'user_' + uid.substring(0, 8),
+          bio: '',
+          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`,
+          isVerified: false,
+          isPrivate: false,
+          followers: [],
+          following: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        location.reload();
+      } catch (err) { alert(err.message); }
+    }
+
+    function logout() {
+      if (profileUnsubscribe) profileUnsubscribe();
+      currentUserProfile = null;
+      auth.signOut();
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('step-auth').classList.add('hidden');
+        document.getElementById('step-main').classList.remove('hidden');
+
+        loadUserData(user);
+        loadLivePosts(); 
+        loadMyProfilePosts(user.uid);
+      } else {
+        document.getElementById('step-auth').classList.remove('hidden');
+        document.getElementById('step-main').classList.add('hidden');
+      }
+    });
+
+    function loadUserData(user) {
+      if (profileUnsubscribe) profileUnsubscribe();
+
+      profileUnsubscribe = db.collection('users').doc(user.uid).onSnapshot(doc => {
+        if (!doc.exists) return;
+        const data = doc.data();
+        currentUserProfile = data;
+
+        if (isViewingOwnProfile) {
+          updateUserUI(data.nickname, data.username, data.avatar, data.bio, data.isVerified, data.isPrivate);
+          document.getElementById('followers-count').innerText = (data.followers || []).length;
+          document.getElementById('following-count').innerText = (data.following || []).length;
+        }
+      });
+    }
+
+    function updateUserUI(name, username, avatar, bio, isVerified, isPrivate) {
+      document.getElementById('main-nickname').childNodes[0].nodeValue = name + " ";
+      document.getElementById('profile-page-name').childNodes[0].nodeValue = name + " ";
+      document.getElementById('main-header-username').textContent = "@" + username;
+      document.getElementById('profile-page-username').textContent = "@" + username;
+
+      document.getElementById('main-avatar').src = avatar;
+      document.getElementById('profile-page-avatar').src = avatar;
+      document.getElementById('avatar-preview').src = avatar;
+
+      document.getElementById('profile-display-bio').textContent = `"${bio || 'لا يوجد نبذة حتى الآن...'}"`;
+
+      document.getElementById('edit-nickname').value = name;
+      document.getElementById('edit-username').value = username;
+      document.getElementById('edit-bio').value = bio || '';
+
+      const privacySelect = document.getElementById('setting-privacy');
+      if (privacySelect) privacySelect.value = isPrivate ? 'private' : 'public';
+
+      const verifiedBadge = document.getElementById('main-verified-badge');
+      const verifiedTag = document.getElementById('profile-verified-tag');
+      if (verifiedBadge) verifiedBadge.classList.toggle('hidden', !isVerified);
+      if (verifiedTag) verifiedTag.classList.toggle('hidden', !isVerified);
+    }
+
+    function renderProfilePage(isSelf) {
+      isViewingOwnProfile = isSelf;
+      if (auth.currentUser && currentUserProfile) {
+        updateUserUI(currentUserProfile.nickname, currentUserProfile.username, currentUserProfile.avatar, currentUserProfile.bio, currentUserProfile.isVerified, currentUserProfile.isPrivate);
+        loadMyProfilePosts(auth.currentUser.uid);
+      }
+      switchMainTab('profile');
+    }
+
+    function viewMyOwnProfile() { renderProfilePage(true); }
+
+    function openEditProfileModal() { document.getElementById('modal-edit-profile').classList.remove('hidden'); }
+    function closeEditProfileModal() { document.getElementById('modal-edit-profile').classList.add('hidden'); }
+
+    async function saveProfileChanges() {
+      const user = auth.currentUser;
+      if (!user) return;
+      const newNick = document.getElementById('edit-nickname').value.trim();
+      const newUsername = document.getElementById('edit-username').value.trim().replaceAll(' ', '_');
+      const newBio = document.getElementById('edit-bio').value.trim();
+
+      if (!newNick || !newUsername) return alert("الرجاء تعبئة اسم المستخدم والاسم المستعار.");
+
+      try {
+        await user.updateProfile({ displayName: newNick });
+        await db.collection('users').doc(user.uid).update({ nickname: newNick, username: newUsername, bio: newBio });
+        alert("تم تحديث الملف الشخصي بنجاح 💾!");
+        closeEditProfileModal();
+      } catch (err) { alert(err.message); }
+    }
+
+    function handleMediaSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      selectedFileToUpload = file;
+      const objectUrl = URL.createObjectURL(file);
+      const isVideo = file.type.startsWith('video');
+
+      const previewContainer = document.getElementById('media-preview-container');
+      const previewContent = document.getElementById('media-preview-content');
+      previewContainer.classList.remove('hidden');
+
+      if (isVideo) {
+        previewContent.innerHTML = `<video src="${objectUrl}" controls class="max-h-44 rounded-xl"></video>`;
+      } else {
+        previewContent.innerHTML = `<img src="${objectUrl}" class="max-h-44 rounded-xl object-contain">`;
+      }
+    }
+
+    function clearMediaPreview() {
+      selectedFileToUpload = null;
+      document.getElementById('media-preview-container').classList.add('hidden');
+      document.getElementById('media-preview-content').innerHTML = '';
+      document.getElementById('post-media-file').value = '';
+    }
+
+    async function publishNewPost() {
+      const user = auth.currentUser;
+      if (!user || !currentUserProfile) return;
+
+      const content = document.getElementById('post-input').value.trim();
+      if (!content && !selectedFileToUpload) return alert("يرجى كتابة نص أو اختيار صورة/سكرين شوت/فيديو من جهازك أولاً!");
+
+      const publishBtn = document.getElementById('publish-btn');
+      
+      try {
+        publishBtn.disabled = true;
+        publishBtn.innerText = "جاري الرفع... ⏳";
+
+        let mediaData = null;
+
+        if (selectedFileToUpload) {
+          const file = selectedFileToUpload;
+          const safeFileName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          const filePath = `posts_media/${user.uid}_${Date.now()}_${safeFileName}`;
+          
+          // استخدام storage().ref() مع bucket الافتراضي بشكل صحيح
+          const fileRef = storage.ref().child(filePath);
+          
+          const snapshot = await fileRef.put(file);
+          const downloadUrl = await snapshot.ref.getDownloadURL();
+
+          mediaData = {
+            type: file.type.startsWith('video') ? 'video' : 'image',
+            url: downloadUrl,
+            path: filePath
+          };
+        }
+
+        await db.collection('posts').add({
+          uid: user.uid,
+          authorName: currentUserProfile.nickname,
+          authorBio: currentUserProfile.bio || '',
+          authorAvatar: currentUserProfile.avatar,
+          content: content,
+          media: mediaData,
+          isPrivate: currentUserProfile.isPrivate || false,
+          likes: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        document.getElementById('post-input').value = '';
+        clearMediaPreview();
+      } catch (err) {
+        console.error("Upload error details:", err);
+        alert("تعذر رفع الملف أو النشر. تأكد من أن حجم الملف مناسب وأن قواعد تخزين فايربيس (Storage Security Rules) مسموحة للقراءة والكتابة.\n\nخطأ: " + err.message);
+      } finally {
+        publishBtn.disabled = false;
+        publishBtn.innerText = "نشر ⚡";
+      }
+    }
+
+    async function deletePost(postId) {
+      if (!confirm("هل أنت متأكد من رغبتك في حذف هذا المنشور نهائياً؟")) return;
+      try {
+        await db.collection('posts').doc(postId).delete();
+      } catch (err) {
+        alert("حدث خطأ أثناء الحذف: " + err.message);
+      }
+    }
+
+    function openEditPostModal(postId, currentContent) {
+      document.getElementById('editing-post-id').value = postId;
+      document.getElementById('edit-post-content').value = currentContent;
+      document.getElementById('modal-edit-post').classList.remove('hidden');
+    }
+
+    function closeEditPostModal() {
+      document.getElementById('modal-edit-post').classList.add('hidden');
+    }
+
+    async function savePostEdit() {
+      const postId = document.getElementById('editing-post-id').value;
+      const newContent = document.getElementById('edit-post-content').value.trim();
+
+      if (!newContent) return alert("لا يمكن أن يكون المنشور فارغاً.");
+
+      try {
+        await db.collection('posts').doc(postId).update({ content: newContent });
+        closeEditPostModal();
+      } catch (err) {
+        alert("حدث خطأ أثناء التعديل: " + err.message);
+      }
+    }
+
+    function loadLivePosts() {
+      const user = auth.currentUser;
+      db.collection('posts').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
+        const container = document.getElementById('posts-container');
+        container.innerHTML = '';
+        if (snapshot.empty) {
+          container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">لا توجد منشورات حالياً.. كن أول من ينشر!</div>';
+          return;
+        }
+        snapshot.forEach(doc => {
+          const post = doc.data();
+          const postId = doc.id;
+          if (post.isPrivate && post.uid !== user.uid) return;
+          container.innerHTML += createPostCardHTML(postId, post, user.uid);
+        });
+      });
+    }
+
+    function loadMyProfilePosts(userId) {
+      db.collection('posts').where('uid', '==', userId).onSnapshot(snapshot => {
+        if (!isViewingOwnProfile) return;
+        const container = document.getElementById('my-posts-container');
+        document.getElementById('my-posts-count').innerText = snapshot.size;
+        container.innerHTML = '';
+        if (snapshot.empty) {
+          container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لم تقم بنشر أي كلمة أو وسائط بعد!</div>';
+          return;
+        }
+        snapshot.forEach(doc => {
+          container.innerHTML += createPostCardHTML(doc.id, doc.data(), userId);
+        });
+      });
+    }
+
+    function createPostCardHTML(postId, post, userId) {
+      const isLiked = (post.likes || []).includes(userId);
+      const likesCount = (post.likes || []).length;
+      const isOwner = post.uid === userId;
+
+      let mediaHTML = '';
+      if (post.media && post.media.url) {
+        const fileUrl = post.media.url;
+        if (post.media.type === 'video') {
+          mediaHTML = `
+            <div class="mt-2 rounded-2xl overflow-hidden border border-cyan-500/30 bg-slate-900 relative group">
+              <video src="${fileUrl}" controls class="w-full max-h-72 object-cover"></video>
+              <a href="${fileUrl}" target="_blank" download class="absolute top-3 right-3 bg-black/80 hover:bg-cyan-500 hover:text-black text-cyan-400 p-2 rounded-xl text-xs backdrop-blur-md transition flex items-center gap-1 shadow-lg" title="تنزيل الفيديو">
+                <i class="fa-solid fa-download"></i> تنزيل
+              </a>
+            </div>`;
+        } else {
+          mediaHTML = `
+            <div class="mt-2 rounded-2xl overflow-hidden border border-cyan-500/30 bg-slate-900 relative group">
+              <img src="${fileUrl}" class="w-full max-h-72 object-cover">
+              <a href="${fileUrl}" target="_blank" download class="absolute top-3 right-3 bg-black/80 hover:bg-cyan-500 hover:text-black text-cyan-400 p-2 rounded-xl text-xs backdrop-blur-md transition flex items-center gap-1 shadow-lg" title="تنزيل الصورة / السكرين شوت">
+                <i class="fa-solid fa-download"></i> تنزيل
+              </a>
+            </div>`;
+        }
+      }
+
+      let ownerActionsHTML = '';
+      if (isOwner) {
+        const escapedContent = (post.content || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        ownerActionsHTML = `
+          <div class="flex items-center gap-2">
+            <button onclick="openEditPostModal('${postId}', '${escapedContent}')" class="text-cyan-400 hover:text-white p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs transition" title="تعديل المنشور">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="deletePost('${postId}')" class="text-red-400 hover:text-white p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs transition" title="حذف المنشور">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="bg-slate-950/80 p-4 rounded-3xl border border-slate-800 space-y-3 hover:border-cyan-500/30 transition relative shadow-lg">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <img src="${post.authorAvatar}" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
+              <div>
+                <h4 class="text-xs font-bold text-white">${post.authorName}</h4>
+                <p class="text-[9px] text-cyan-300/70 truncate max-w-[180px]">${post.authorBio || 'عضو في كَلِمَة'}</p>
+              </div>
+            </div>
+            ${ownerActionsHTML}
+          </div>
+
+          ${post.content ? `<p class="text-xs text-slate-200 leading-relaxed">${post.content}</p>` : ''}
+          ${mediaHTML}
+
+          <div class="flex items-center gap-4 pt-2 border-t border-slate-900 text-xs text-slate-400">
+            <button onclick="toggleLike('${postId}')" class="flex items-center gap-1.5 transition ${isLiked ? 'text-pink-500 font-bold' : 'hover:text-pink-400'}">
+              <i class="${isLiked ? 'fa-solid' : 'fa-regular'} fa-heart text-sm"></i>
+              <span>${likesCount}</span>
+            </button>
+            <button onclick="toggleCommentsSection('${postId}')" class="flex items-center gap-1.5 hover:text-cyan-400 transition">
+              <i class="fa-regular fa-comment text-sm"></i>
+              <span>التعليقات</span>
+            </button>
+          </div>
+
+          <div id="comments-box-${postId}" class="hidden space-y-2.5 pt-2 border-t border-slate-900/80">
+            <div id="comments-list-${postId}" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar text-[11px]">
+              <div class="text-slate-500 text-center py-1">جاري تحميل التعليقات...</div>
+            </div>
+            
+            <div class="flex gap-1.5 pt-1">
+              <input type="text" id="comment-input-${postId}" placeholder="اكتب تعليقاً للمتابعين..." class="flex-1 bg-slate-900 p-2 rounded-xl border border-slate-800 text-[11px] text-white focus:outline-none focus:border-cyan-400">
+              <button onclick="addComment('${postId}')" class="bg-cyan-500 text-black px-3 rounded-xl font-black text-xs"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function toggleLike(postId) {
+      const user = auth.currentUser;
+      if (!user) return;
+      const postRef = db.collection('posts').doc(postId);
+      
+      try {
+        const doc = await postRef.get();
+        if (!doc.exists) return;
+        let likes = doc.data().likes || [];
+
+        if (likes.includes(user.uid)) {
+          likes = likes.filter(id => id !== user.uid);
+        } else {
+          likes.push(user.uid);
+        }
+        await postRef.update({ likes: likes });
+      } catch (err) { alert(err.message); }
+    }
+
+    function toggleCommentsSection(postId) {
+      const box = document.getElementById(`comments-box-${postId}`);
+      box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) {
+        loadComments(postId);
+      }
+    }
+
+    function loadComments(postId) {
+      db.collection('posts').doc(postId).collection('comments').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
+        const list = document.getElementById(`comments-list-${postId}`);
+        list.innerHTML = '';
+        if (snapshot.empty) {
+          list.innerHTML = '<div class="text-slate-500 text-center py-1 text-[10px]">لا توجد تعليقات بعد.. كن أول المعلقين!</div>';
+          return;
+        }
+        snapshot.forEach(doc => {
+          const c = doc.data();
+          list.innerHTML += `
+            <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex items-start gap-2">
+              <img src="${c.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user'}" class="w-6 h-6 rounded-lg object-cover border border-cyan-500/30">
+              <div class="flex-1">
+                <div class="flex justify-between items-center">
+                  <span class="font-bold text-cyan-300 text-[10px]">${c.authorName}</span>
+                </div>
+                <p class="text-slate-200 text-[11px] mt-0.5">${c.text}</p>
+              </div>
+            </div>
+          `;
+        });
+      });
+    }
+
+    async function addComment(postId) {
+      const user = auth.currentUser;
+      if (!user || !currentUserProfile) return;
+      const input = document.getElementById(`comment-input-${postId}`);
+      const text = input.value.trim();
+      if (!text) return;
+
+      try {
+        await db.collection('posts').doc(postId).collection('comments').add({
+          uid: user.uid,
+          authorName: currentUserProfile.nickname,
+          avatar: currentUserProfile.avatar,
+          text: text,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        input.value = '';
+      } catch (err) { alert(err.message); }
+    }
+
+    function switchMainTab(tab) {
+      const pageFeed = document.getElementById('page-feed');
+      const pageLikes = document.getElementById('page-likes');
+      const pageChat = document.getElementById('page-chat');
+      const pageProfile = document.getElementById('page-profile');
+
+      pageFeed.classList.add('hidden');
+      pageLikes.classList.add('hidden');
+      pageChat.classList.add('hidden');
+      pageProfile.classList.add('hidden');
+
+      if (tab === 'home') pageFeed.classList.remove('hidden');
+      else if (tab === 'likes') pageLikes.classList.remove('hidden');
+      else if (tab === 'chat') pageChat.classList.remove('hidden');
+      else if (tab === 'profile') pageProfile.classList.remove('hidden');
+    }
+
+    function openAvatarModal() { document.getElementById('modal-avatar').classList.remove('hidden'); }
+    function closeAvatarModal() { document.getElementById('modal-avatar').classList.add('hidden'); }
+    function openSettingsModal() { document.getElementById('modal-settings').classList.remove('hidden'); }
+    function closeSettingsModal() { document.getElementById('modal-settings').classList.add('hidden'); }
+    function toggleSidebar() { document.getElementById('sidebar-drawer').classList.toggle('translate-x-full'); }
+    function toggleAiChat() { document.getElementById('ai-chat-box').classList.toggle('hidden'); }
+    function sendAiMessage() {}
+
+    async function handleAvatarUpload(e) {
+      const user = auth.currentUser;
+      const file = e.target.files[0];
+      if (!file || !user) return;
+
+      try {
+        const filePath = `avatars/${user.uid}_${Date.now()}`;
+        const fileRef = storage.ref().child(filePath);
+        const snapshot = await fileRef.put(file);
+        const downloadUrl = await snapshot.ref.getDownloadURL();
+
+        await db.collection('users').doc(user.uid).update({ avatar: downloadUrl });
+        closeAvatarModal();
+      } catch (err) { alert(err.message); }
+    }
+
+    async function togglePrivacySetting() {
+      const user = auth.currentUser;
+      if (!user) return;
+      const isPrivate = document.getElementById('setting-privacy').value === 'private';
+      try {
+        await db.collection('users').doc(user.uid).update({ isPrivate: isPrivate });
+      } catch (err) { alert(err.message); }
+    }
+  </script>
+</body>
+</html>
