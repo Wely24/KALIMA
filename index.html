@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -142,14 +142,6 @@
           <button onclick="toggleSidebar()" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
         </div>
         <div class="space-y-4">
-          <button onclick="switchMainTab('chat'); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/60 to-indigo-950/60 border border-cyan-500/40 hover:border-cyan-400 flex items-center justify-between transition group">
-            <div class="flex items-center gap-3">
-              <i class="fa-solid fa-satellite-dish text-cyan-400 group-hover:rotate-45 transition duration-300"></i>
-              <span class="text-xs font-bold text-cyan-200">الدردشة الخاصة (DM)</span>
-            </div>
-            <span class="bg-cyan-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">مباشر</span>
-          </button>
-
           <button onclick="openEditProfileModal(); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500 flex items-center gap-3 transition">
             <i class="fa-solid fa-user-pen text-cyan-400"></i>
             <span class="text-xs font-bold text-slate-300">تعديل الملف الشخصي (Edit Profile)</span>
@@ -391,6 +383,12 @@
         <span class="text-[9px] mt-1 font-bold">إكسبلور</span>
       </button>
 
+      <button id="nav-chat" onclick="switchMainTab('chat')" class="relative flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
+        <i class="fa-solid fa-comments text-base"></i>
+        <span class="text-[9px] mt-1 font-bold">الدردشة</span>
+        <span id="chat-requests-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
+      </button>
+
       <button id="nav-profile" onclick="viewMyOwnProfile()" class="flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
         <i class="fa-solid fa-id-badge text-base"></i>
         <span class="text-[9px] mt-1 font-bold">الملف الشخصي</span>
@@ -571,11 +569,18 @@
     function getRequestId(fromUid, toUid) { return `${fromUid}_${toUid}`; }
 
     function updateRequestsBadge() {
-      const badge = document.getElementById('requests-badge');
-      const total = incomingFriendRequestsCount + incomingMessageRequestsCount;
-      if (!badge) return;
-      badge.textContent = total > 9 ? '9+' : String(total);
-      badge.classList.toggle('hidden', total === 0);
+      // شارة طلبات الصداقة تظهر فوق زر "التفاعلات"
+      const friendBadge = document.getElementById('requests-badge');
+      if (friendBadge) {
+        friendBadge.textContent = incomingFriendRequestsCount > 9 ? '9+' : String(incomingFriendRequestsCount);
+        friendBadge.classList.toggle('hidden', incomingFriendRequestsCount === 0);
+      }
+      // شارة طلبات الرسائل تظهر فوق زر "الدردشة" في الشريط السفلي
+      const chatBadge = document.getElementById('chat-requests-badge');
+      if (chatBadge) {
+        chatBadge.textContent = incomingMessageRequestsCount > 9 ? '9+' : String(incomingMessageRequestsCount);
+        chatBadge.classList.toggle('hidden', incomingMessageRequestsCount === 0);
+      }
     }
 
     // --- دالة أمان: تنقية أي نص قادم من المستخدمين قبل حقنه في innerHTML (لمنع XSS) ---
@@ -734,20 +739,28 @@
       if (notificationsUnsubscribe) notificationsUnsubscribe();
 
       // الاستماع للإشعارات الجديدة الموجهة للمستخدم الحالي عبر Firestore
+      // ملاحظة: تم تعمّد عدم استخدام orderBy هنا مع where على حقل مختلف لأن ذلك
+      // يتطلب إنشاء فهرس مركّب (composite index) يدوياً من Firebase Console.
+      // بدلاً من ذلك نجلب أحدث الإشعارات ونرتبها في الجافاسكربت مباشرة، فتعمل الميزة فوراً بدون أي إعداد إضافي.
       notificationsUnsubscribe = db.collection('notifications')
         .where('recipientId', '==', userId)
-        .orderBy('createdAt', 'desc')
-        .limit(5)
+        .limit(30)
         .onSnapshot(snapshot => {
-          snapshot.docChanges().forEach(change => {
-            if (change.type === 'added') {
-              const data = change.doc.data();
-              const notifTime = data.createdAt ? data.createdAt.toMillis() : Date.now();
-              
-              // عرض الإشعار فقط إذا تم إنشاؤه بعد تسجيل دخول المستخدم الحالي لمنع تكرار القديم
-              if (notifTime > lastHandledNotificationTime) {
-                showToast(data.text, data.type || 'info', data);
-              }
+          const changes = snapshot.docChanges()
+            .filter(change => change.type === 'added')
+            .sort((a, b) => {
+              const aTime = a.doc.data().createdAt ? a.doc.data().createdAt.toMillis() : 0;
+              const bTime = b.doc.data().createdAt ? b.doc.data().createdAt.toMillis() : 0;
+              return aTime - bTime;
+            });
+
+          changes.forEach(change => {
+            const data = change.doc.data();
+            const notifTime = data.createdAt ? data.createdAt.toMillis() : Date.now();
+
+            // عرض الإشعار فقط إذا تم إنشاؤه بعد تسجيل دخول المستخدم الحالي لمنع تكرار القديم
+            if (notifTime > lastHandledNotificationTime) {
+              showToast(data.text, data.type || 'info', data);
             }
           });
         }, err => {
@@ -858,6 +871,16 @@
           batch.update(db.collection('users').doc(req.toUid), { followers: firebase.firestore.FieldValue.arrayUnion(req.fromUid) });
           batch.update(db.collection('users').doc(req.fromUid), { following: firebase.firestore.FieldValue.arrayUnion(req.toUid) });
           batch.update(requestRef, { status: 'accepted' });
+
+          // 🔧 إصلاح: إن كانت هناك محادثة سابقة بين الطرفين معلّقة (pending)، نرفعها تلقائياً
+          // إلى "مقبولة" بمجرد قبول الصداقة حتى تصبح المحادثة قابلة للدخول فوراً بدل أن تبقى مقفلة
+          const chatId = getChatId(req.fromUid, req.toUid);
+          const chatRef = db.collection('chats').doc(chatId);
+          const existingChatDoc = await chatRef.get();
+          if (existingChatDoc.exists && existingChatDoc.data().status === 'pending') {
+            batch.update(chatRef, { status: 'accepted' });
+          }
+
           await batch.commit();
           await sendNotificationToUser(req.fromUid, `وافق ${currentUserProfile ? currentUserProfile.nickname : 'المستخدم'} على طلب صداقتك ✅`, 'info');
           showToast('تم قبول طلب الصداقة 🤝', 'friend');
@@ -1495,9 +1518,9 @@
       else if (tab === 'profile') pageProfile.classList.remove('hidden');
       else if (tab === 'explore') pageExplore.classList.remove('hidden');
 
-      // تحديث تظليل الأيقونة النشطة في الشريط السفلي (الدردشة تُفتح من القائمة الجانبية وليس لها زر سفلي)
-      const navMap = { home: 'nav-home', likes: 'nav-likes', profile: 'nav-profile', explore: 'nav-explore' };
-      ['nav-home', 'nav-likes', 'nav-profile', 'nav-explore'].forEach(id => {
+      // تحديث تظليل الأيقونة النشطة في الشريط السفلي (الدردشة الآن لها زر مستقل بالشريط السفلي)
+      const navMap = { home: 'nav-home', likes: 'nav-likes', profile: 'nav-profile', explore: 'nav-explore', chat: 'nav-chat' };
+      ['nav-home', 'nav-likes', 'nav-profile', 'nav-explore', 'nav-chat'].forEach(id => {
         const btn = document.getElementById(id);
         const isActive = navMap[tab] === id;
         btn.classList.toggle('text-cyan-400', isActive);
@@ -1577,7 +1600,24 @@
           chatDoc = await chatRef.get();
         }
 
-        const chatData = chatDoc.data() || {};
+        let chatData = chatDoc.data() || {};
+
+        // 🔧 إصلاح إضافي: إن كانت المحادثة معلّقة لكن الطرفين أصبحا صديقين متبادلين (يتابعان بعض)
+        // نرفعها تلقائياً إلى "مقبولة" فوراً بدل أن تبقى مقفلة رغم قبول الصداقة
+        if (chatData.status === 'pending') {
+          const [myDocCheck, targetDocCheck] = await Promise.all([
+            db.collection('users').doc(user.uid).get(),
+            db.collection('users').doc(targetUid).get()
+          ]);
+          const myFollowing = (myDocCheck.data() || {}).following || [];
+          const targetFollowing = (targetDocCheck.data() || {}).following || [];
+          const nowMutualFriends = myFollowing.includes(targetUid) && targetFollowing.includes(user.uid);
+          if (nowMutualFriends) {
+            await chatRef.update({ status: 'accepted' });
+            chatData = { ...chatData, status: 'accepted' };
+          }
+        }
+
         const isPendingForMe = chatData.status === 'pending' && chatData.initiatedBy !== user.uid;
         const isWaitingForOther = chatData.status === 'pending' && chatData.initiatedBy === user.uid;
 
@@ -1667,9 +1707,10 @@
       if (!user) return;
       if (chatsListUnsubscribe) { chatsListUnsubscribe(); chatsListUnsubscribe = null; }
 
+      // ملاحظة: تم تعمّد عدم استخدام orderBy هنا مع where('array-contains') لأن ذلك
+      // يتطلب فهرساً مركّباً يدوياً من Firebase Console. الترتيب حسب آخر رسالة يتم في الجافاسكربت.
       chatsListUnsubscribe = db.collection('chats')
         .where('participants', 'array-contains', user.uid)
-        .orderBy('lastMessageAt', 'desc')
         .onSnapshot(async snapshot => {
           const container = document.getElementById('chats-list-container');
 
@@ -1680,6 +1721,10 @@
             if (c.status === 'rejected') return false;
             if (c.status === 'pending' && c.initiatedBy !== user.uid) return false;
             return true;
+          }).sort((a, b) => {
+            const aTime = a.data().lastMessageAt ? a.data().lastMessageAt.toMillis() : 0;
+            const bTime = b.data().lastMessageAt ? b.data().lastMessageAt.toMillis() : 0;
+            return bTime - aTime; // الأحدث أولاً
           });
 
           if (visibleDocs.length === 0) {
