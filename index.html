@@ -230,12 +230,42 @@
         </div>
       </div>
 
-      <!-- ❤️ التفاعلات -->
-      <div id="page-likes" class="hidden space-y-3">
+      <!-- ❤️ التفاعلات وطلبات الصداقة والرسائل -->
+      <div id="page-likes" class="hidden space-y-4">
+        <div>
+          <h3 class="text-xs font-bold text-purple-400 border-b border-purple-500/20 pb-2.5 flex items-center gap-2">
+            <i class="fa-solid fa-user-group text-purple-400"></i> طلبات الصداقة المعلّقة
+          </h3>
+          <div id="friend-requests-container" class="space-y-2.5 pt-2.5">
+            <div class="text-center py-3 text-slate-500 text-xs">لا توجد طلبات صداقة حالياً.</div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold text-pink-400 border-b border-pink-500/20 pb-2.5 flex items-center gap-2">
+            <i class="fa-solid fa-envelope-circle-check text-pink-400"></i> طلبات الرسائل المعلّقة
+          </h3>
+          <div id="message-requests-container" class="space-y-2.5 pt-2.5">
+            <div class="text-center py-3 text-slate-500 text-xs">لا توجد طلبات رسائل حالياً.</div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold text-cyan-400 border-b border-cyan-500/20 pb-2.5 flex items-center gap-2">
+            <i class="fa-solid fa-heart-pulse text-pink-500"></i> التفاعلات والمشاركات
+          </h3>
+          <p class="text-xs text-slate-400 pt-2">التفاعلات الحية متوفرة مباشرة على منشورات السلسلة الرئيسية والصفحة الشخصية.</p>
+        </div>
+      </div>
+
+      <!-- 🧭 إكسبلور: منشورات الصور والمقاطع العامة من كل المستخدمين -->
+      <div id="page-explore" class="hidden space-y-3">
         <h3 class="text-xs font-bold text-cyan-400 border-b border-cyan-500/20 pb-2.5 flex items-center gap-2">
-          <i class="fa-solid fa-heart-pulse text-pink-500"></i> التفاعلات والمشاركات
+          <i class="fa-solid fa-compass text-cyan-400"></i> إكسبلور — أحدث الصور والمقاطع العامة
         </h3>
-        <p class="text-xs text-slate-400">التفاعلات الحية متوفرة مباشرة على منشورات السلسلة الرئيسية والصفحة الشخصية.</p>
+        <div id="explore-grid-container" class="grid grid-cols-3 gap-1.5">
+          <div class="col-span-3 text-center py-6 text-slate-500 text-xs animate-pulse">جاري تحميل الوسائط العامة...</div>
+        </div>
       </div>
 
       <!-- 💬 الدردشات -->
@@ -348,9 +378,17 @@
         <span class="text-[9px] mt-1 font-bold">الرئيسية</span>
       </button>
 
-      <button id="nav-likes" onclick="switchMainTab('likes')" class="flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
+      <button id="nav-likes" onclick="switchMainTab('likes')" class="relative flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
         <i class="fa-solid fa-heart-pulse text-base"></i>
         <span class="text-[9px] mt-1 font-bold">التفاعلات</span>
+        <span id="requests-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
+      </button>
+
+      <button id="nav-explore" onclick="switchMainTab('explore')" class="flex flex-col items-center text-slate-600 hover:text-cyan-400 transition -mt-5">
+        <span class="w-12 h-12 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center shadow-2xl border-2 border-slate-950 cyber-btn-glow">
+          <i class="fa-solid fa-compass text-lg text-black"></i>
+        </span>
+        <span class="text-[9px] mt-1 font-bold">إكسبلور</span>
       </button>
 
       <button id="nav-profile" onclick="viewMyOwnProfile()" class="flex flex-col items-center text-slate-600 hover:text-cyan-400 transition">
@@ -448,8 +486,18 @@
           <span id="chat-partner-name" class="text-xs font-bold text-white">اسم المستخدم</span>
         </div>
       </div>
+      <div id="chat-pending-banner" class="hidden bg-pink-500/10 border-b border-pink-500/30 p-3 space-y-2">
+        <p class="text-[11px] text-pink-300 text-center">📩 هذه رسالة من مستخدم لا تتابعه، هل توافق على فتحها؟</p>
+        <div class="flex gap-2">
+          <button onclick="respondToMessageRequest(activeChatId, true)" class="flex-1 bg-pink-500 text-black text-[11px] font-black py-2 rounded-xl hover:opacity-90 transition">فتح الرسالة 📩</button>
+          <button onclick="respondToMessageRequest(activeChatId, false); closeChatWindow();" class="flex-1 bg-slate-800 text-slate-300 text-[11px] font-bold py-2 rounded-xl hover:text-white transition">رفض ❌</button>
+        </div>
+      </div>
+      <div id="chat-waiting-banner" class="hidden bg-cyan-500/10 border-b border-cyan-500/30 p-2.5">
+        <p class="text-[10px] text-cyan-300 text-center">⏳ بانتظار موافقة الطرف الآخر على طلب الرسالة</p>
+      </div>
       <div id="chat-messages-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2.5"></div>
-      <div class="p-3 border-t border-slate-800 flex gap-2 items-center bg-slate-950/80">
+      <div id="chat-input-bar" class="p-3 border-t border-slate-800 flex gap-2 items-center bg-slate-950/80">
         <input type="text" id="chat-message-input" placeholder="اكتب رسالتك..." onkeydown="if(event.key==='Enter') sendChatMessage();" class="flex-1 bg-slate-900 p-3 rounded-2xl border border-slate-800 text-xs text-white focus:outline-none focus:border-cyan-400">
         <button onclick="sendChatMessage()" class="bg-cyan-500 text-black w-10 h-10 rounded-2xl font-black flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
@@ -513,6 +561,22 @@
     let livePostsUnsubscribe = null;
     let activeCommentsUnsubscribe = {}; // { postId: unsubscribeFn }
     let currentMediaObjectUrl = null;   // لتحرير الذاكرة من معاينة الوسائط
+
+    // --- طلبات الصداقة وطلبات الرسائل المعلّقة (تحتاج قبول/رفض) ---
+    let friendRequestsIncomingUnsubscribe = null;
+    let messageRequestsIncomingUnsubscribe = null;
+    let incomingFriendRequestsCount = 0;
+    let incomingMessageRequestsCount = 0;
+
+    function getRequestId(fromUid, toUid) { return `${fromUid}_${toUid}`; }
+
+    function updateRequestsBadge() {
+      const badge = document.getElementById('requests-badge');
+      const total = incomingFriendRequestsCount + incomingMessageRequestsCount;
+      if (!badge) return;
+      badge.textContent = total > 9 ? '9+' : String(total);
+      badge.classList.toggle('hidden', total === 0);
+    }
 
     // --- دالة أمان: تنقية أي نص قادم من المستخدمين قبل حقنه في innerHTML (لمنع XSS) ---
     function escapeHtml(str) {
@@ -594,6 +658,7 @@
         activeProfileUid = user.uid;
         loadProfilePosts(user.uid);
         loadChatsList();
+        loadPendingRequests(user.uid); // تحميل طلبات الصداقة والرسائل المعلّقة الواردة
         initRealtimeNotifications(user.uid); // تفعيل مستمع الإشعارات الفورية للطرف الآخر
       } else {
         document.getElementById('step-auth').classList.remove('hidden');
@@ -603,6 +668,8 @@
         if (chatsListUnsubscribe) { chatsListUnsubscribe(); chatsListUnsubscribe = null; }
         if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
         if (notificationsUnsubscribe) { notificationsUnsubscribe(); notificationsUnsubscribe = null; }
+        if (friendRequestsIncomingUnsubscribe) { friendRequestsIncomingUnsubscribe(); friendRequestsIncomingUnsubscribe = null; }
+        if (messageRequestsIncomingUnsubscribe) { messageRequestsIncomingUnsubscribe(); messageRequestsIncomingUnsubscribe = null; }
         // إلغاء مستمع المنشورات الحية ومستمعات كل التعليقات المفتوحة لمنع تراكمها بعد الخروج
         if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
         Object.values(activeCommentsUnsubscribe).forEach(unsub => unsub && unsub());
@@ -611,36 +678,56 @@
     });
 
     // --- نظام الإشعارات الفورية الحية (Toast + Database Sync) ---
-    function showToast(message, type = 'info') {
+    function showToast(message, type = 'info', data = {}) {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
       
       let borderColor = 'border-cyan-500/50';
       let iconClass = 'fa-solid fa-bell text-cyan-400';
-      if (type === 'friend') {
+      if (type === 'friend' || type === 'friend_request') {
         borderColor = 'border-purple-500/50';
         iconClass = 'fa-solid fa-user-plus text-purple-400';
-      } else if (type === 'message') {
+      } else if (type === 'message' || type === 'message_request') {
         borderColor = 'border-pink-500/50';
         iconClass = 'fa-solid fa-paper-plane text-pink-400';
       }
 
-      toast.className = `holo-panel pointer-events-auto p-3.5 rounded-2xl border ${borderColor} shadow-2xl flex items-center gap-3 w-72 animate-bounce transition-all duration-300`;
+      // إضافة أزرار قبول/رفض تفاعلية لطلبات الصداقة وطلبات الرسائل
+      let actionsHTML = '';
+      if (type === 'friend_request' && data.requestId) {
+        actionsHTML = `
+          <div class="flex gap-1.5 mt-2 pointer-events-auto">
+            <button onclick="respondToFriendRequest('${data.requestId}', true); this.closest('.holo-panel').remove();" class="flex-1 bg-cyan-500 text-black text-[10px] font-black py-1.5 rounded-lg hover:opacity-90 transition">قبول ✅</button>
+            <button onclick="respondToFriendRequest('${data.requestId}', false); this.closest('.holo-panel').remove();" class="flex-1 bg-slate-800 text-slate-300 text-[10px] font-bold py-1.5 rounded-lg hover:text-white transition">رفض ❌</button>
+          </div>`;
+      } else if (type === 'message_request' && data.chatId) {
+        actionsHTML = `
+          <div class="flex gap-1.5 mt-2 pointer-events-auto">
+            <button onclick="respondToMessageRequest('${data.chatId}', true); this.closest('.holo-panel').remove();" class="flex-1 bg-pink-500 text-black text-[10px] font-black py-1.5 rounded-lg hover:opacity-90 transition">فتح الرسالة 📩</button>
+            <button onclick="respondToMessageRequest('${data.chatId}', false); this.closest('.holo-panel').remove();" class="flex-1 bg-slate-800 text-slate-300 text-[10px] font-bold py-1.5 rounded-lg hover:text-white transition">رفض ❌</button>
+          </div>`;
+      }
+
+      toast.className = `holo-panel pointer-events-auto p-3.5 rounded-2xl border ${borderColor} shadow-2xl flex items-start gap-3 w-72 transition-all duration-300`;
       toast.innerHTML = `
         <div class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0">
           <i class="${iconClass}"></i>
         </div>
         <div class="flex-1">
           <p class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">إشعار هولوجرامي فوري ⚡</p>
-          <p class="text-xs text-slate-100 mt-0.5">${message}</p>
+          <p class="text-xs text-slate-100 mt-0.5">${escapeHtml(message)}</p>
+          ${actionsHTML}
         </div>
       `;
 
       container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-      }, 4500);
+      // الإشعارات التفاعلية (فيها أزرار) تبقى حتى يتفاعل معها المستخدم، والبقية تختفي تلقائياً
+      if (!actionsHTML) {
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 300);
+        }, 4500);
+      }
     }
 
     function initRealtimeNotifications(userId) {
@@ -659,7 +746,7 @@
               
               // عرض الإشعار فقط إذا تم إنشاؤه بعد تسجيل دخول المستخدم الحالي لمنع تكرار القديم
               if (notifTime > lastHandledNotificationTime) {
-                showToast(data.text, data.type || 'info');
+                showToast(data.text, data.type || 'info', data);
               }
             }
           });
@@ -668,7 +755,7 @@
         });
     }
 
-    async function sendNotificationToUser(recipientUid, text, type) {
+    async function sendNotificationToUser(recipientUid, text, type, extra = {}) {
       if (!recipientUid || recipientUid === auth.currentUser.uid) return;
       try {
         await db.collection('notifications').add({
@@ -676,11 +763,131 @@
           senderId: auth.currentUser.uid,
           text: text,
           type: type,
+          ...extra,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } catch (err) {
         console.error("Error sending notification:", err);
       }
+    }
+
+    // --- تحميل طلبات الصداقة والرسائل المعلّقة (تظهر بشكل دائم بصفحة التفاعلات وليس فقط كإشعار عابر) ---
+    function loadPendingRequests(userId) {
+      if (friendRequestsIncomingUnsubscribe) { friendRequestsIncomingUnsubscribe(); friendRequestsIncomingUnsubscribe = null; }
+      if (messageRequestsIncomingUnsubscribe) { messageRequestsIncomingUnsubscribe(); messageRequestsIncomingUnsubscribe = null; }
+
+      // 1) طلبات الصداقة الواردة المعلّقة
+      friendRequestsIncomingUnsubscribe = db.collection('friendRequests')
+        .where('toUid', '==', userId)
+        .where('status', '==', 'pending')
+        .onSnapshot(snapshot => {
+          const container = document.getElementById('friend-requests-container');
+          incomingFriendRequestsCount = snapshot.size;
+          updateRequestsBadge();
+          if (!container) return;
+          if (snapshot.empty) {
+            container.innerHTML = '<div class="text-center py-3 text-slate-500 text-xs">لا توجد طلبات صداقة حالياً.</div>';
+            return;
+          }
+          container.innerHTML = snapshot.docs.map(doc => {
+            const req = doc.data();
+            return `
+              <div class="bg-slate-900/80 p-3 rounded-2xl border border-purple-500/30 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                  <img src="${escapeHtml(req.fromAvatar)}" class="w-9 h-9 rounded-xl border border-purple-400/50 bg-slate-950 object-cover">
+                  <p class="text-xs font-bold text-white">${escapeHtml(req.fromName)}</p>
+                </div>
+                <div class="flex gap-1.5">
+                  <button onclick="respondToFriendRequest('${doc.id}', true)" class="bg-cyan-500 text-black text-[10px] font-black px-2.5 py-1.5 rounded-lg hover:opacity-90 transition">قبول</button>
+                  <button onclick="respondToFriendRequest('${doc.id}', false)" class="bg-slate-800 text-slate-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg hover:text-white transition">رفض</button>
+                </div>
+              </div>`;
+          }).join('');
+        }, err => {
+          console.log("Friend requests listener note:", err.message);
+        });
+
+      // 2) طلبات الرسائل الواردة المعلّقة (محادثات بدأها آخرون ولم تتم الموافقة عليها بعد)
+      messageRequestsIncomingUnsubscribe = db.collection('chats')
+        .where('participants', 'array-contains', userId)
+        .onSnapshot(snapshot => {
+          const container = document.getElementById('message-requests-container');
+          const pendingIncoming = snapshot.docs.filter(doc => {
+            const c = doc.data();
+            return c.status === 'pending' && c.initiatedBy && c.initiatedBy !== userId;
+          });
+          incomingMessageRequestsCount = pendingIncoming.length;
+          updateRequestsBadge();
+          if (!container) return;
+          if (pendingIncoming.length === 0) {
+            container.innerHTML = '<div class="text-center py-3 text-slate-500 text-xs">لا توجد طلبات رسائل حالياً.</div>';
+            return;
+          }
+          container.innerHTML = pendingIncoming.map(doc => {
+            const chat = doc.data();
+            const partnerUid = chat.participants.find(uid => uid !== userId);
+            return `
+              <div class="bg-slate-900/80 p-3 rounded-2xl border border-pink-500/30 space-y-2">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs font-bold text-white">طلب رسالة جديد 📩</p>
+                </div>
+                <p class="text-[10px] text-slate-400 truncate">${escapeHtml(chat.lastMessage) || 'رسالة جديدة بانتظار موافقتك'}</p>
+                <div class="flex gap-1.5">
+                  <button onclick="respondToMessageRequest('${doc.id}', true)" class="flex-1 bg-pink-500 text-black text-[10px] font-black py-1.5 rounded-lg hover:opacity-90 transition">فتح الرسالة</button>
+                  <button onclick="respondToMessageRequest('${doc.id}', false)" class="flex-1 bg-slate-800 text-slate-300 text-[10px] font-bold py-1.5 rounded-lg hover:text-white transition">رفض</button>
+                </div>
+              </div>`;
+          }).join('');
+        }, err => {
+          console.log("Message requests listener note:", err.message);
+        });
+    }
+
+    async function respondToFriendRequest(requestId, accept) {
+      const user = auth.currentUser;
+      if (!user) return;
+      const requestRef = db.collection('friendRequests').doc(requestId);
+      try {
+        const reqDoc = await requestRef.get();
+        if (!reqDoc.exists) return;
+        const req = reqDoc.data();
+        if (req.toUid !== user.uid || req.status !== 'pending') return; // حماية: فقط صاحب الطلب الموجّه إليه يقرر
+
+        if (accept) {
+          const batch = db.batch();
+          batch.update(db.collection('users').doc(req.toUid), { followers: firebase.firestore.FieldValue.arrayUnion(req.fromUid) });
+          batch.update(db.collection('users').doc(req.fromUid), { following: firebase.firestore.FieldValue.arrayUnion(req.toUid) });
+          batch.update(requestRef, { status: 'accepted' });
+          await batch.commit();
+          await sendNotificationToUser(req.fromUid, `وافق ${currentUserProfile ? currentUserProfile.nickname : 'المستخدم'} على طلب صداقتك ✅`, 'info');
+          showToast('تم قبول طلب الصداقة 🤝', 'friend');
+        } else {
+          await requestRef.update({ status: 'rejected' });
+          showToast('تم رفض طلب الصداقة', 'info');
+        }
+      } catch (err) { alert(err.message); }
+    }
+
+    async function respondToMessageRequest(chatId, accept) {
+      const user = auth.currentUser;
+      if (!user) return;
+      const chatRef = db.collection('chats').doc(chatId);
+      try {
+        const chatDoc = await chatRef.get();
+        if (!chatDoc.exists) return;
+        const chat = chatDoc.data();
+        if (chat.initiatedBy === user.uid) return; // فقط المستلم يقرر بقبول/رفض طلب الرسالة
+
+        if (accept) {
+          await chatRef.update({ status: 'accepted' });
+          const partnerUid = chat.participants.find(uid => uid !== user.uid);
+          showToast('تم قبول طلب الرسالة، يمكنك الآن الرد 💬', 'message');
+          openChatWithUser(partnerUid);
+        } else {
+          await chatRef.update({ status: 'rejected' });
+          showToast('تم رفض طلب الرسالة', 'info');
+        }
+      } catch (err) { alert(err.message); }
     }
 
     function loadUserData(user) {
@@ -761,7 +968,7 @@
 
       if (viewedProfileUnsubscribe) { viewedProfileUnsubscribe(); viewedProfileUnsubscribe = null; }
 
-      viewedProfileUnsubscribe = db.collection('users').doc(uid).onSnapshot(doc => {
+      viewedProfileUnsubscribe = db.collection('users').doc(uid).onSnapshot(async doc => {
         if (activeProfileUid !== uid) return;
         if (!doc.exists) return;
         const data = doc.data();
@@ -773,12 +980,26 @@
         const isFollowing = (data.followers || []).includes(user.uid);
         const followLabel = document.getElementById('follow-toggle-label');
         const followBtn = document.getElementById('follow-toggle-btn');
-        followLabel.textContent = isFollowing ? 'إلغاء المتابعة' : 'إضافة صديق';
+        followBtn.disabled = false;
         followBtn.classList.toggle('bg-gradient-to-r', true);
         followBtn.classList.toggle('from-cyan-500', !isFollowing);
         followBtn.classList.toggle('to-blue-600', !isFollowing);
         followBtn.classList.toggle('from-slate-700', isFollowing);
         followBtn.classList.toggle('to-slate-800', isFollowing);
+
+        if (isFollowing) {
+          followLabel.textContent = 'إلغاء المتابعة';
+        } else {
+          // التحقق من وجود طلب صداقة معلّق مسبقاً لعرض الحالة الصحيحة بدل إعادة الإرسال
+          try {
+            const reqDoc = await db.collection('friendRequests').doc(getRequestId(user.uid, uid)).get();
+            const isPending = reqDoc.exists && reqDoc.data().status === 'pending';
+            followLabel.textContent = isPending ? 'الطلب معلّق...' : 'إضافة صديق';
+            followBtn.disabled = isPending;
+          } catch (e) {
+            followLabel.textContent = 'إضافة صديق';
+          }
+        }
       });
 
       loadProfilePosts(uid);
@@ -796,22 +1017,43 @@
         if (!targetDoc.exists) return;
         const isFollowing = (targetDoc.data().followers || []).includes(user.uid);
 
-        const myRef = db.collection('users').doc(user.uid);
-        const batch = db.batch();
-
         if (isFollowing) {
+          // إلغاء المتابعة يتم فورياً بدون الحاجة لموافقة
+          const myRef = db.collection('users').doc(user.uid);
+          const batch = db.batch();
           batch.update(targetRef, { followers: firebase.firestore.FieldValue.arrayRemove(user.uid) });
           batch.update(myRef, { following: firebase.firestore.FieldValue.arrayRemove(targetUid) });
-        } else {
-          batch.update(targetRef, { followers: firebase.firestore.FieldValue.arrayUnion(user.uid) });
-          batch.update(myRef, { following: firebase.firestore.FieldValue.arrayUnion(targetUid) });
-          
-          // إرسال إشعار فوري للطرف الآخر عند إضافة الصداقة / المتابعة
-          const myNick = currentUserProfile ? currentUserProfile.nickname : 'مستخدم';
-          await sendNotificationToUser(targetUid, `قام ${myNick} بإضافتك كص صديق/متابعتك! 🤝`, 'friend');
+          await batch.commit();
+          return;
         }
 
-        await batch.commit();
+        // الإضافة الجديدة تتحول لطلب صداقة يحتاج قبول/رفض من صاحب الحساب
+        const requestId = getRequestId(user.uid, targetUid);
+        const requestRef = db.collection('friendRequests').doc(requestId);
+        const existingReq = await requestRef.get();
+        if (existingReq.exists && existingReq.data().status === 'pending') {
+          showToast('طلب الصداقة قيد الانتظار بالفعل ⏳', 'friend');
+          return;
+        }
+
+        const myNick = currentUserProfile ? currentUserProfile.nickname : 'مستخدم';
+        const myAvatar = currentUserProfile ? currentUserProfile.avatar : '';
+        await requestRef.set({
+          fromUid: user.uid,
+          fromName: myNick,
+          fromAvatar: myAvatar,
+          toUid: targetUid,
+          status: 'pending',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await sendNotificationToUser(targetUid, `أرسل ${myNick} طلب إضافة صداقة 🤝`, 'friend_request', { requestId });
+        showToast('تم إرسال طلب الصداقة، بانتظار الموافقة ⏳', 'friend');
+
+        const followBtn = document.getElementById('follow-toggle-btn');
+        const followLabel = document.getElementById('follow-toggle-label');
+        if (followLabel) followLabel.textContent = 'الطلب معلّق...';
+        if (followBtn) followBtn.disabled = true;
       } catch (err) { alert(err.message); }
     }
 
@@ -1011,17 +1253,37 @@
       if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
       livePostsUnsubscribe = db.collection('posts').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
         const container = document.getElementById('posts-container');
+        const exploreContainer = document.getElementById('explore-grid-container');
         container.innerHTML = '';
+        let exploreHTML = '';
+
         if (snapshot.empty) {
           container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">لا توجد منشورات حالياً.. كن أول من ينشر!</div>';
-          return;
         }
+
         snapshot.forEach(doc => {
           const post = doc.data();
           const postId = doc.id;
           if (post.isPrivate && post.uid !== user.uid) return;
           container.innerHTML += createPostCardHTML(postId, post, user.uid);
+
+          // بناء شبكة الإكسبلور من نفس المنشورات العامة التي تحتوي وسائط (صور/مقاطع)
+          if (post.media && post.media.url) {
+            const isVideo = post.media.type === 'video';
+            exploreHTML += `
+              <div class="relative aspect-square rounded-lg overflow-hidden border border-slate-800 bg-slate-900 group cursor-pointer" onclick="window.open('${post.media.url}', '_blank')">
+                ${isVideo
+                  ? `<video src="${post.media.url}" class="w-full h-full object-cover" muted></video>
+                     <span class="absolute top-1 right-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-md"><i class="fa-solid fa-play"></i></span>`
+                  : `<img src="${post.media.url}" class="w-full h-full object-cover">`
+                }
+              </div>`;
+          }
         });
+
+        if (exploreContainer) {
+          exploreContainer.innerHTML = exploreHTML || '<div class="col-span-3 text-center py-6 text-slate-500 text-xs">لا توجد صور أو مقاطع عامة حالياً.</div>';
+        }
       });
     }
 
@@ -1219,20 +1481,23 @@
       const pageLikes = document.getElementById('page-likes');
       const pageChat = document.getElementById('page-chat');
       const pageProfile = document.getElementById('page-profile');
+      const pageExplore = document.getElementById('page-explore');
 
       pageFeed.classList.add('hidden');
       pageLikes.classList.add('hidden');
       pageChat.classList.add('hidden');
       pageProfile.classList.add('hidden');
+      pageExplore.classList.add('hidden');
 
       if (tab === 'home') pageFeed.classList.remove('hidden');
       else if (tab === 'likes') pageLikes.classList.remove('hidden');
       else if (tab === 'chat') pageChat.classList.remove('hidden');
       else if (tab === 'profile') pageProfile.classList.remove('hidden');
+      else if (tab === 'explore') pageExplore.classList.remove('hidden');
 
       // تحديث تظليل الأيقونة النشطة في الشريط السفلي (الدردشة تُفتح من القائمة الجانبية وليس لها زر سفلي)
-      const navMap = { home: 'nav-home', likes: 'nav-likes', profile: 'nav-profile' };
-      ['nav-home', 'nav-likes', 'nav-profile'].forEach(id => {
+      const navMap = { home: 'nav-home', likes: 'nav-likes', profile: 'nav-profile', explore: 'nav-explore' };
+      ['nav-home', 'nav-likes', 'nav-profile', 'nav-explore'].forEach(id => {
         const btn = document.getElementById(id);
         const isActive = navMap[tab] === id;
         btn.classList.toggle('text-cyan-400', isActive);
@@ -1286,14 +1551,35 @@
       const chatRef = db.collection('chats').doc(chatId);
 
       try {
-        const chatDoc = await chatRef.get();
+        let chatDoc = await chatRef.get();
         if (!chatDoc.exists) {
+          // التحقق من كون الطرفين أصدقاء متبادلين (يتابعان بعض) لتفعيل القبول التلقائي بدون طلب رسالة
+          const [myDoc, targetUserDoc] = await Promise.all([
+            db.collection('users').doc(user.uid).get(),
+            db.collection('users').doc(targetUid).get()
+          ]);
+          const myData = myDoc.exists ? myDoc.data() : {};
+          const targetData = targetUserDoc.exists ? targetUserDoc.data() : {};
+          const isMutualFriend = (myData.following || []).includes(targetUid) && (targetData.following || []).includes(user.uid);
+
           await chatRef.set({
             participants: [user.uid, targetUid],
+            initiatedBy: user.uid,
+            status: isMutualFriend ? 'accepted' : 'pending',
             lastMessage: '',
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
           });
+
+          if (!isMutualFriend) {
+            const myNick = currentUserProfile ? currentUserProfile.nickname : 'شخص ما';
+            await sendNotificationToUser(targetUid, `أرسل لك ${myNick} طلب رسالة جديد ✉️`, 'message_request', { chatId });
+          }
+          chatDoc = await chatRef.get();
         }
+
+        const chatData = chatDoc.data() || {};
+        const isPendingForMe = chatData.status === 'pending' && chatData.initiatedBy !== user.uid;
+        const isWaitingForOther = chatData.status === 'pending' && chatData.initiatedBy === user.uid;
 
         if (!targetName || !targetAvatar) {
           const targetDoc = await db.collection('users').doc(targetUid).get();
@@ -1308,7 +1594,19 @@
         document.getElementById('chat-partner-avatar').src = targetAvatar;
         document.getElementById('modal-chat-window').classList.remove('hidden');
 
+        // إظهار/إخفاء شريط طلب الرسالة أو شريط الانتظار حسب حالة المحادثة
+        document.getElementById('chat-pending-banner').classList.toggle('hidden', !isPendingForMe);
+        document.getElementById('chat-waiting-banner').classList.toggle('hidden', !isWaitingForOther);
+        document.getElementById('chat-input-bar').classList.toggle('hidden', isPendingForMe);
+
         if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
+
+        // إن كانت الرسالة معلّقة بانتظار موافقتي، لا نعرض محتوى الرسائل قبل القبول
+        if (isPendingForMe) {
+          document.getElementById('chat-messages-container').innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">وافق أولاً لعرض محتوى الرسالة 🔒</div>';
+          return;
+        }
+
         activeChatUnsubscribe = chatRef.collection('messages').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
           const container = document.getElementById('chat-messages-container');
           container.innerHTML = '';
@@ -1374,17 +1672,29 @@
         .orderBy('lastMessageAt', 'desc')
         .onSnapshot(async snapshot => {
           const container = document.getElementById('chats-list-container');
-          if (snapshot.empty) {
+
+          // استبعاد: المحادثات المرفوضة، وطلبات الرسائل الواردة (غير المقبولة بعد) التي بدأها الطرف الآخر
+          // (هذه تظهر بدلاً من ذلك في صفحة التفاعلات ضمن "طلبات الرسائل المعلّقة")
+          const visibleDocs = snapshot.docs.filter(doc => {
+            const c = doc.data();
+            if (c.status === 'rejected') return false;
+            if (c.status === 'pending' && c.initiatedBy !== user.uid) return false;
+            return true;
+          });
+
+          if (visibleDocs.length === 0) {
             container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد محادثات بعد.. ابحث عن صديق وابدأ الدردشة!</div>';
             return;
           }
 
-          const rows = await Promise.all(snapshot.docs.map(async doc => {
+          const rows = await Promise.all(visibleDocs.map(async doc => {
             const chat = doc.data();
             const partnerUid = chat.participants.find(uid => uid !== user.uid);
             if (!partnerUid) return '';
             const partnerDoc = await db.collection('users').doc(partnerUid).get();
             const partner = partnerDoc.exists ? partnerDoc.data() : { nickname: 'مستخدم كَلِمَة', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=user' };
+            const isPendingMine = chat.status === 'pending' && chat.initiatedBy === user.uid;
+            const pendingTag = isPendingMine ? '<span class="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded-full shrink-0">⏳ قيد الانتظار</span>' : '';
 
             return `
               <div onclick="openChatWithUser('${partnerUid}', '${(partner.nickname || '').replace(/'/g, "\\'")}', '${partner.avatar || ''}')" class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
@@ -1395,6 +1705,7 @@
                     <p class="text-[10px] text-slate-400 truncate max-w-[160px]">${escapeHtml(chat.lastMessage) || 'ابدأ المحادثة الآن'}</p>
                   </div>
                 </div>
+                ${pendingTag}
               </div>`;
           }));
 
