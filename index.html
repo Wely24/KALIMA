@@ -105,7 +105,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* تحسين التوافق مع iOS */
     input, textarea, button {
       -webkit-appearance: none;
       appearance: none;
@@ -141,6 +140,21 @@
     .smooth-scroll {
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
+    }
+
+    /* تحسين عرض رسائل الخطأ */
+    .error-message {
+      background: rgba(255, 0, 0, 0.1);
+      border: 1px solid rgba(255, 0, 0, 0.3);
+      color: #ff6b6b;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      margin-top: 8px;
+      display: none;
+    }
+    .error-message.show {
+      display: block;
     }
   </style>
 </head>
@@ -281,6 +295,9 @@
             <button onclick="clearMediaPreview()" class="absolute top-2 left-2 z-10 bg-black/70 hover:bg-red-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs" aria-label="إزالة الملف"><i class="fa-solid fa-xmark"></i></button>
             <div id="media-preview-content" class="w-full flex justify-center items-center"></div>
           </div>
+          
+          <!-- حاوية لعرض أخطاء الرفع -->
+          <div id="upload-error" class="error-message"></div>
 
           <div class="flex justify-between items-center border-t border-slate-800/80 pt-2.5">
             <div class="flex items-center gap-2">
@@ -288,6 +305,7 @@
               <button onclick="document.getElementById('post-media-file').click()" class="text-cyan-400 hover:text-cyan-300 text-xs px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center gap-1.5 transition">
                 <i class="fa-solid fa-photo-film"></i> <span>رفع صورة / سكرين / فيديو</span>
               </button>
+              <span id="file-info" class="text-[10px] text-slate-500 hidden"></span>
             </div>
             <button id="publish-btn" onclick="publishNewPost()" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs px-4 py-2 rounded-xl font-black shadow-lg transition hover:scale-105">نشر ⚡</button>
           </div>
@@ -320,9 +338,11 @@
 
         <div>
           <h3 class="text-xs font-bold text-cyan-400 border-b border-cyan-500/20 pb-2.5 flex items-center gap-2">
-            <i class="fa-solid fa-heart-pulse text-pink-500"></i> التفاعلات والمشاركات
+            <i class="fa-solid fa-bell text-cyan-400"></i> التفاعلات والإشعارات 📢
           </h3>
-          <p class="text-xs text-slate-400 pt-2">التفاعلات الحية متوفرة مباشرة على منشورات السلسلة الرئيسية والصفحة الشخصية.</p>
+          <div id="notifications-container" class="space-y-2.5 pt-2.5">
+            <div class="text-center py-3 text-slate-500 text-xs">جاري تحميل التفاعلات...</div>
+          </div>
         </div>
       </div>
 
@@ -598,7 +618,9 @@
   </div>
 
   <script>
+    // ============================================================
     // 🔥 إعداد Firebase
+    // ============================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBYygXroU_zF4MfqqgWbzVqk9hHjUCWJ1w",
       authDomain: "dchatapp-3b550.firebaseapp.com",
@@ -613,11 +635,14 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    // متغيرات الحالة العامة
+    // ============================================================
+    // 📦 متغيرات الحالة العامة
+    // ============================================================
     let currentUserProfile = null;
     let profileUnsubscribe = null;
     let isViewingOwnProfile = true;
     let selectedFileToUpload = null;
+    let selectedFileInfo = null; // لتخزين معلومات الملف
 
     let activeProfileUid = null;
     let viewedProfileUnsubscribe = null;
@@ -627,7 +652,8 @@
     let activeChatUnsubscribe = null;
     let activeChatId = null;
     let activeChatPartnerUid = null;
-    let notificationsUnsubscribe = null;
+    let notificationsUnsubscribe = null;      // للإشعارات الفورية (Toast)
+    let notificationsListenerUnsubscribe = null; // للإشعارات في صفحة التفاعلات
     let lastHandledNotificationTime = Date.now();
 
     let livePostsUnsubscribe = null;
@@ -639,7 +665,9 @@
     let incomingFriendRequestsCount = 0;
     let incomingMessageRequestsCount = 0;
 
-    // دوال مساعدة
+    // ============================================================
+    // 🛠️ دوال مساعدة (Helper Functions)
+    // ============================================================
     function getRequestId(fromUid, toUid) { return `${fromUid}_${toUid}`; }
 
     function updateRequestsBadge() {
@@ -665,7 +693,19 @@
         .replace(/'/g, '&#039;');
     }
 
-    // دوال المصادقة
+    // عرض رسالة خطأ في واجهة المستخدم
+    function showUploadError(message) {
+      const errorEl = document.getElementById('upload-error');
+      if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.add('show');
+        setTimeout(() => errorEl.classList.remove('show'), 6000);
+      }
+    }
+
+    // ============================================================
+    // 🔐 دوال المصادقة (Authentication)
+    // ============================================================
     function switchAuthTab(tab) {
       const loginForm = document.getElementById('login-form');
       const registerForm = document.getElementById('register-form');
@@ -692,7 +732,9 @@
           document.getElementById('login-email').value.trim(),
           document.getElementById('login-password').value
         );
-      } catch (err) { alert(err.message); }
+      } catch (err) {
+        alert('❌ فشل تسجيل الدخول: ' + err.message);
+      }
     }
 
     async function handleRegister(e) {
@@ -720,17 +762,22 @@
         });
 
         location.reload();
-      } catch (err) { alert(err.message); }
+      } catch (err) {
+        alert('❌ فشل إنشاء الحساب: ' + err.message);
+      }
     }
 
     function logout() {
       if (profileUnsubscribe) profileUnsubscribe();
       if (notificationsUnsubscribe) { notificationsUnsubscribe(); notificationsUnsubscribe = null; }
+      if (notificationsListenerUnsubscribe) { notificationsListenerUnsubscribe(); notificationsListenerUnsubscribe = null; }
       currentUserProfile = null;
       auth.signOut();
     }
 
-    // مراقب حالة المصادقة
+    // ============================================================
+    // 👤 مراقب حالة المصادقة
+    // ============================================================
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById('step-auth').classList.add('hidden');
@@ -744,6 +791,7 @@
         loadChatsList();
         loadPendingRequests(user.uid);
         initRealtimeNotifications(user.uid);
+        loadNotifications(user.uid);
       } else {
         document.getElementById('step-auth').classList.remove('hidden');
         document.getElementById('step-main').classList.add('hidden');
@@ -752,6 +800,7 @@
         if (chatsListUnsubscribe) { chatsListUnsubscribe(); chatsListUnsubscribe = null; }
         if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
         if (notificationsUnsubscribe) { notificationsUnsubscribe(); notificationsUnsubscribe = null; }
+        if (notificationsListenerUnsubscribe) { notificationsListenerUnsubscribe(); notificationsListenerUnsubscribe = null; }
         if (friendRequestsIncomingUnsubscribe) { friendRequestsIncomingUnsubscribe(); friendRequestsIncomingUnsubscribe = null; }
         if (messageRequestsIncomingUnsubscribe) { messageRequestsIncomingUnsubscribe(); messageRequestsIncomingUnsubscribe = null; }
         if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
@@ -760,9 +809,12 @@
       }
     });
 
-    // نظام الإشعارات
+    // ============================================================
+    // 🔔 نظام الإشعارات (Toast & Notifications)
+    // ============================================================
     function showToast(message, type = 'info', data = {}) {
       const container = document.getElementById('toast-container');
+      if (!container) return;
       const toast = document.createElement('div');
       
       let borderColor = 'border-cyan-500/50';
@@ -773,6 +825,12 @@
       } else if (type === 'message' || type === 'message_request') {
         borderColor = 'border-pink-500/50';
         iconClass = 'fa-solid fa-paper-plane text-pink-400';
+      } else if (type === 'like') {
+        borderColor = 'border-pink-500/50';
+        iconClass = 'fa-solid fa-heart text-pink-400';
+      } else if (type === 'comment') {
+        borderColor = 'border-green-500/50';
+        iconClass = 'fa-solid fa-comment text-green-400';
       }
 
       let actionsHTML = '';
@@ -834,7 +892,7 @@
             }
           });
         }, err => {
-          console.log("Notifications listener note: ", err.message);
+          console.warn("⚠️ مشكلة في مستمع الإشعارات الفورية:", err.message);
         });
     }
 
@@ -850,11 +908,100 @@
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } catch (err) {
-        console.error("Error sending notification:", err);
+        console.error("❌ خطأ في إرسال الإشعار:", err);
       }
     }
 
-    // تحميل الطلبات المعلقة
+    // ============================================================
+    // 📰 تحميل الإشعارات وعرضها في صفحة التفاعلات (بدون orderBy لتجنب الفهرس)
+    // ============================================================
+    function loadNotifications(userId) {
+      if (notificationsListenerUnsubscribe) {
+        notificationsListenerUnsubscribe();
+        notificationsListenerUnsubscribe = null;
+      }
+
+      const container = document.getElementById('notifications-container');
+      if (!container) return;
+
+      notificationsListenerUnsubscribe = db.collection('notifications')
+        .where('recipientId', '==', userId)
+        .limit(50)
+        .onSnapshot(snapshot => {
+          // الترتيب يدوياً في الجافاسكربت لتجنب الحاجة لفهرس مركب في Firestore
+          const docs = snapshot.docs.sort((a, b) => {
+            const aTime = a.data().createdAt ? a.data().createdAt.toMillis() : 0;
+            const bTime = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
+            return bTime - aTime; // الأحدث أولاً
+          });
+
+          if (docs.length === 0) {
+            container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد تفاعلات أو إشعارات جديدة</div>';
+            return;
+          }
+
+          container.innerHTML = docs.map(doc => {
+            const notif = doc.data();
+            const time = notif.createdAt ? new Date(notif.createdAt.toMillis()).toLocaleString('ar-SA') : '';
+            let icon = 'fa-solid fa-bell text-cyan-400';
+            let bgColor = 'border-cyan-500/20';
+            let iconBg = 'bg-cyan-500/10';
+            if (notif.type === 'like') {
+              icon = 'fa-solid fa-heart text-pink-500';
+              bgColor = 'border-pink-500/20';
+              iconBg = 'bg-pink-500/10';
+            } else if (notif.type === 'comment') {
+              icon = 'fa-solid fa-comment text-green-400';
+              bgColor = 'border-green-500/20';
+              iconBg = 'bg-green-500/10';
+            }
+
+            return `
+              <div class="bg-slate-900/80 p-3 rounded-2xl border ${bgColor} flex items-start gap-3 hover:border-cyan-500/30 transition fade-in">
+                <div class="w-8 h-8 rounded-full ${iconBg} flex items-center justify-center shrink-0">
+                  <i class="${icon}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-slate-200 leading-relaxed">${escapeHtml(notif.text)}</p>
+                  <p class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(time)}</p>
+                  ${notif.postId ? `
+                    <button onclick="scrollToPost('${notif.postId}')" class="mt-1.5 text-[10px] text-cyan-400 hover:text-cyan-300 font-bold bg-cyan-500/10 px-2.5 py-1 rounded-lg transition">
+                      <i class="fa-solid fa-arrow-left"></i> عرض المنشور
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+        }, err => {
+          console.error("❌ خطأ في تحميل الإشعارات:", err);
+          container.innerHTML = `<div class="text-center py-4 text-red-400 text-[11px]">تعذر تحميل التفاعلات: ${err.message}</div>`;
+        });
+    }
+
+    // التمرير إلى منشور معين
+    function scrollToPost(postId) {
+      switchMainTab('home');
+      // الانتظار قليلاً حتى تظهر المنشورات
+      setTimeout(() => {
+        let postElement = document.querySelector(`[data-post-id="${postId}"]`);
+        if (postElement) {
+          postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          postElement.style.borderColor = '#00f2fe';
+          postElement.style.boxShadow = '0 0 25px rgba(0, 242, 254, 0.3)';
+          setTimeout(() => {
+            postElement.style.borderColor = '';
+            postElement.style.boxShadow = '';
+          }, 3000);
+        } else {
+          showToast('⚠️ المنشور غير موجود حالياً', 'info');
+        }
+      }, 600);
+    }
+
+    // ============================================================
+    // 🤝 طلبات الصداقة والرسائل المعلقة
+    // ============================================================
     function loadPendingRequests(userId) {
       if (friendRequestsIncomingUnsubscribe) { friendRequestsIncomingUnsubscribe(); friendRequestsIncomingUnsubscribe = null; }
       if (messageRequestsIncomingUnsubscribe) { messageRequestsIncomingUnsubscribe(); messageRequestsIncomingUnsubscribe = null; }
@@ -886,7 +1033,7 @@
               </div>`;
           }).join('');
         }, err => {
-          console.log("Friend requests listener note:", err.message);
+          console.warn("⚠️ مستمع طلبات الصداقة:", err.message);
         });
 
       messageRequestsIncomingUnsubscribe = db.collection('chats')
@@ -919,7 +1066,7 @@
               </div>`;
           }).join('');
         }, err => {
-          console.log("Message requests listener note:", err.message);
+          console.warn("⚠️ مستمع طلبات الرسائل:", err.message);
         });
     }
 
@@ -939,7 +1086,6 @@
           batch.update(db.collection('users').doc(req.fromUid), { following: firebase.firestore.FieldValue.arrayUnion(req.toUid) });
           batch.update(requestRef, { status: 'accepted' });
 
-          // رفع حالة المحادثة إذا كانت معلقة
           const chatId = getChatId(req.fromUid, req.toUid);
           const chatRef = db.collection('chats').doc(chatId);
           const existingChatDoc = await chatRef.get();
@@ -954,7 +1100,10 @@
           await requestRef.update({ status: 'rejected' });
           showToast('تم رفض طلب الصداقة', 'info');
         }
-      } catch (err) { alert(err.message); }
+      } catch (err) { 
+        console.error("❌ خطأ في الرد على طلب الصداقة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
     async function respondToMessageRequest(chatId, accept) {
@@ -976,10 +1125,15 @@
           await chatRef.update({ status: 'rejected' });
           showToast('تم رفض طلب الرسالة', 'info');
         }
-      } catch (err) { alert(err.message); }
+      } catch (err) {
+        console.error("❌ خطأ في الرد على طلب الرسالة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
-    // تحميل بيانات المستخدم
+    // ============================================================
+    // 👤 تحميل بيانات المستخدم
+    // ============================================================
     function loadUserData(user) {
       if (profileUnsubscribe) profileUnsubscribe();
 
@@ -993,10 +1147,11 @@
           document.getElementById('followers-count').innerText = (data.followers || []).length;
           document.getElementById('following-count').innerText = (data.following || []).length;
         }
+      }, err => {
+        console.error("❌ خطأ في تحميل بيانات المستخدم:", err);
       });
     }
 
-    // ✅ إصلاح: استخدام textContent بدلاً من childNodes
     function updateUserUI(name, username, avatar, bio, isVerified, isPrivate) {
       document.getElementById('main-nickname').textContent = name + " ";
       document.getElementById('profile-page-name').textContent = name + " ";
@@ -1022,7 +1177,9 @@
       if (verifiedTag) verifiedTag.classList.toggle('hidden', !isVerified);
     }
 
-    // دوال البروفايل
+    // ============================================================
+    // 👤 دوال البروفايل
+    // ============================================================
     function viewMyOwnProfile() {
       if (viewedProfileUnsubscribe) { viewedProfileUnsubscribe(); viewedProfileUnsubscribe = null; }
       isViewingOwnProfile = true;
@@ -1091,6 +1248,8 @@
             followLabel.textContent = 'إضافة صديق';
           }
         }
+      }, err => {
+        console.error("❌ خطأ في تحميل بروفايل المستخدم:", err);
       });
 
       loadProfilePosts(uid);
@@ -1143,7 +1302,10 @@
         const followLabel = document.getElementById('follow-toggle-label');
         if (followLabel) followLabel.textContent = 'الطلب معلّق...';
         if (followBtn) followBtn.disabled = true;
-      } catch (err) { alert(err.message); }
+      } catch (err) { 
+        console.error("❌ خطأ في متابعة المستخدم:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
     function messageUserFromProfile() {
@@ -1153,7 +1315,9 @@
       openChatWithUser(activeProfileUid, name, avatar);
     }
 
-    // البحث عن أصدقاء
+    // ============================================================
+    // 🔍 البحث عن أصدقاء
+    // ============================================================
     async function searchFriends() {
       const term = document.getElementById('friend-search-input').value.trim().toLowerCase();
       const resultsContainer = document.getElementById('friend-search-results');
@@ -1176,6 +1340,7 @@
         });
         renderSearchResults(matches);
       } catch (err) {
+        console.error("❌ خطأ في البحث:", err);
         resultsContainer.innerHTML = `<div class="text-center py-3 text-red-400 text-[11px]">تعذر البحث: ${err.message}</div>`;
       }
     }
@@ -1200,7 +1365,9 @@
       `).join('');
     }
 
-    // دوال تعديل البروفايل
+    // ============================================================
+    // ✏️ دوال تعديل البروفايل
+    // ============================================================
     function openEditProfileModal() { document.getElementById('modal-edit-profile').classList.remove('hidden'); }
     function closeEditProfileModal() { document.getElementById('modal-edit-profile').classList.add('hidden'); }
 
@@ -1218,17 +1385,41 @@
         await db.collection('users').doc(user.uid).update({ nickname: newNick, username: newUsername, bio: newBio });
         alert("تم تحديث الملف الشخصي بنجاح 💾!");
         closeEditProfileModal();
-      } catch (err) { alert(err.message); }
+      } catch (err) { 
+        console.error("❌ خطأ في حفظ التغييرات:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
-    // دوال رفع الوسائط
+    // ============================================================
+    // 📁 دوال رفع الوسائط
+    // ============================================================
     function handleMediaSelect(e) {
       const file = e.target.files[0];
       if (!file) return;
 
+      // التحقق من حجم الملف (حد أقصى 10 ميجابايت)
+      const MAX_SIZE = 10 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        showUploadError('⚠️ حجم الملف يتجاوز 10 ميجابايت');
+        document.getElementById('post-media-file').value = '';
+        return;
+      }
+
+      // التحقق من نوع الملف
+      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+        showUploadError('⚠️ يرجى اختيار ملف صورة أو فيديو فقط');
+        document.getElementById('post-media-file').value = '';
+        return;
+      }
+
       if (currentMediaObjectUrl) { URL.revokeObjectURL(currentMediaObjectUrl); }
 
       selectedFileToUpload = file;
+      selectedFileInfo = {
+        name: file.name,
+        size: (file.size / 1024).toFixed(1) + ' كيلوبايت'
+      };
       const objectUrl = URL.createObjectURL(file);
       currentMediaObjectUrl = objectUrl;
       const isVideo = file.type.startsWith('video');
@@ -1242,28 +1433,48 @@
       } else {
         previewContent.innerHTML = `<img src="${objectUrl}" class="max-h-44 rounded-xl object-contain">`;
       }
+
+      // عرض معلومات الملف
+      const fileInfo = document.getElementById('file-info');
+      fileInfo.textContent = `📎 ${selectedFileInfo.name} (${selectedFileInfo.size})`;
+      fileInfo.classList.remove('hidden');
+      
+      // إخفاء رسائل الخطأ السابقة
+      document.getElementById('upload-error').classList.remove('show');
     }
 
     function clearMediaPreview() {
       if (currentMediaObjectUrl) { URL.revokeObjectURL(currentMediaObjectUrl); currentMediaObjectUrl = null; }
       selectedFileToUpload = null;
+      selectedFileInfo = null;
       document.getElementById('media-preview-container').classList.add('hidden');
       document.getElementById('media-preview-content').innerHTML = '';
       document.getElementById('post-media-file').value = '';
+      document.getElementById('file-info').classList.add('hidden');
     }
 
+    // ============================================================
+    // 📝 نشر منشور جديد مع رفع الوسائط
+    // ============================================================
     async function publishNewPost() {
       const user = auth.currentUser;
-      if (!user || !currentUserProfile) return;
+      if (!user || !currentUserProfile) {
+        showUploadError('⚠️ يجب تسجيل الدخول أولاً');
+        return;
+      }
 
       const content = document.getElementById('post-input').value.trim();
-      if (!content && !selectedFileToUpload) return alert("يرجى كتابة نص أو اختيار صورة/سكرين شوت/فيديو من جهازك أولاً!");
+      if (!content && !selectedFileToUpload) {
+        showUploadError('⚠️ يرجى كتابة نص أو اختيار ملف');
+        return;
+      }
 
       const publishBtn = document.getElementById('publish-btn');
       
       try {
         publishBtn.disabled = true;
         publishBtn.innerText = "جاري الرفع... ⏳";
+        publishBtn.style.opacity = '0.6';
 
         let mediaData = null;
 
@@ -1297,21 +1508,28 @@
 
         document.getElementById('post-input').value = '';
         clearMediaPreview();
+        showToast('✅ تم نشر المنشور بنجاح', 'info');
+        
       } catch (err) {
-        console.error("Upload error details:", err);
-        alert("تعذر رفع الملف أو النشر. تأكد من أن حجم الملف مناسب وأن قواعد تخزين فايربيس (Storage Security Rules) مسموحة للقراءة والكتابة.\n\nخطأ: " + err.message);
+        console.error("❌ تفاصيل خطأ الرفع:", err);
+        showUploadError('❌ تعذر رفع الملف: ' + err.message);
       } finally {
         publishBtn.disabled = false;
         publishBtn.innerText = "نشر ⚡";
+        publishBtn.style.opacity = '1';
       }
     }
 
-    // دوال المنشورات
+    // ============================================================
+    // 📰 دوال المنشورات (تعديل، حذف)
+    // ============================================================
     async function deletePost(postId) {
       if (!confirm("هل أنت متأكد من رغبتك في حذف هذا المنشور نهائياً؟")) return;
       try {
         await db.collection('posts').doc(postId).delete();
+        showToast('✅ تم حذف المنشور', 'info');
       } catch (err) {
+        console.error("❌ خطأ في الحذف:", err);
         alert("حدث خطأ أثناء الحذف: " + err.message);
       }
     }
@@ -1335,12 +1553,16 @@
       try {
         await db.collection('posts').doc(postId).update({ content: newContent });
         closeEditPostModal();
+        showToast('✅ تم تعديل المنشور', 'info');
       } catch (err) {
+        console.error("❌ خطأ في التعديل:", err);
         alert("حدث خطأ أثناء التعديل: " + err.message);
       }
     }
 
-    // تحميل المنشورات الحية
+    // ============================================================
+    // 📡 تحميل المنشورات الحية
+    // ============================================================
     function loadLivePosts() {
       const user = auth.currentUser;
       if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
@@ -1376,6 +1598,8 @@
         if (exploreContainer) {
           exploreContainer.innerHTML = exploreHTML || '<div class="col-span-3 text-center py-6 text-slate-500 text-xs">لا توجد صور أو مقاطع عامة حالياً.</div>';
         }
+      }, err => {
+        console.error("❌ خطأ في تحميل المنشورات:", err);
       });
     }
 
@@ -1395,9 +1619,14 @@
         snapshot.forEach(doc => {
           container.innerHTML += createPostCardHTML(doc.id, doc.data(), currentUid);
         });
+      }, err => {
+        console.error("❌ خطأ في تحميل منشورات الملف الشخصي:", err);
       });
     }
 
+    // ============================================================
+    // 🃏 إنشاء بطاقة المنشور (مع إصلاح ثغرة XSS)
+    // ============================================================
     function createPostCardHTML(postId, post, userId) {
       const isLiked = (post.likes || []).includes(userId);
       const likesCount = (post.likes || []).length;
@@ -1427,10 +1656,11 @@
 
       let ownerActionsHTML = '';
       if (isOwner) {
-        const escapedContent = (post.content || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        // ✅ إصلاح ثغرة XSS: استخدام encodeURIComponent
+        const safeContent = encodeURIComponent(post.content || '');
         ownerActionsHTML = `
           <div class="flex items-center gap-2">
-            <button onclick="openEditPostModal('${postId}', '${escapedContent}')" class="text-cyan-400 hover:text-white p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs transition" title="تعديل المنشور">
+            <button onclick="openEditPostModal('${postId}', decodeURIComponent('${safeContent}'))" class="text-cyan-400 hover:text-white p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs transition" title="تعديل المنشور">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
             <button onclick="deletePost('${postId}')" class="text-red-400 hover:text-white p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs transition" title="حذف المنشور">
@@ -1441,7 +1671,7 @@
       }
 
       return `
-        <div class="bg-slate-950/80 p-4 rounded-3xl border border-slate-800 space-y-3 hover:border-cyan-500/30 transition relative shadow-lg">
+        <div class="bg-slate-950/80 p-4 rounded-3xl border border-slate-800 space-y-3 hover:border-cyan-500/30 transition relative shadow-lg" data-post-id="${postId}">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3 cursor-pointer" onclick="${isOwner ? 'viewMyOwnProfile()' : `viewUserProfile('${post.uid}')`}">
               <img src="${escapeHtml(post.authorAvatar)}" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
@@ -1481,6 +1711,9 @@
       `;
     }
 
+    // ============================================================
+    // ❤️ دالة اللايك المحسنة مع إرسال إشعار
+    // ============================================================
     async function toggleLike(postId) {
       const user = auth.currentUser;
       if (!user) return;
@@ -1489,7 +1722,8 @@
       try {
         const doc = await postRef.get();
         if (!doc.exists) return;
-        const likes = doc.data().likes || [];
+        const postData = doc.data();
+        const likes = postData.likes || [];
         const alreadyLiked = likes.includes(user.uid);
 
         await postRef.update({
@@ -1497,9 +1731,31 @@
             ? firebase.firestore.FieldValue.arrayRemove(user.uid)
             : firebase.firestore.FieldValue.arrayUnion(user.uid)
         });
-      } catch (err) { alert(err.message); }
+
+        // إرسال إشعار عند أول لايك (وليس إلغاء)
+        if (!alreadyLiked && postData.uid !== user.uid) {
+          const userDoc = await db.collection('users').doc(user.uid).get();
+          const userName = userDoc.exists ? userDoc.data().nickname : 'مستخدم';
+          await db.collection('notifications').add({
+            recipientId: postData.uid,
+            senderId: user.uid,
+            senderName: userName,
+            type: 'like',
+            postId: postId,
+            text: `👍 أعجب ${userName} بمنشورك`,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          showToast(`👍 ${userName} أعجب بمنشورك`, 'like');
+        }
+      } catch (err) { 
+        console.error("❌ خطأ في اللايك:", err);
+        alert("حدث خطأ: " + err.message);
+      }
     }
 
+    // ============================================================
+    // 💬 دوال التعليقات
+    // ============================================================
     function toggleCommentsSection(postId) {
       const box = document.getElementById(`comments-box-${postId}`);
       box.classList.toggle('hidden');
@@ -1542,6 +1798,8 @@
             </div>
           `;
         });
+      }, err => {
+        console.error("❌ خطأ في تحميل التعليقات:", err);
       });
     }
 
@@ -1561,10 +1819,35 @@
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         input.value = '';
-      } catch (err) { alert(err.message); }
+
+        // إرسال إشعار لصاحب المنشور
+        const postDoc = await db.collection('posts').doc(postId).get();
+        if (postDoc.exists) {
+          const postData = postDoc.data();
+          if (postData.uid !== user.uid) {
+            const commentPreview = text.length > 50 ? text.substring(0, 50) + '...' : text;
+            await db.collection('notifications').add({
+              recipientId: postData.uid,
+              senderId: user.uid,
+              senderName: currentUserProfile.nickname,
+              type: 'comment',
+              postId: postId,
+              commentText: text,
+              text: `💬 ${currentUserProfile.nickname} علّق على منشورك: "${commentPreview}"`,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showToast(`💬 ${currentUserProfile.nickname} علّق على منشورك`, 'comment');
+          }
+        }
+      } catch (err) { 
+        console.error("❌ خطأ في التعليق:", err);
+        alert("حدث خطأ: " + err.message);
+      }
     }
 
-    // التنقل بين الصفحات
+    // ============================================================
+    // 🧭 التنقل بين الصفحات
+    // ============================================================
     function switchMainTab(tab) {
       const pageFeed = document.getElementById('page-feed');
       const pageLikes = document.getElementById('page-likes');
@@ -1593,7 +1876,9 @@
       });
     }
 
-    // دوال عامة
+    // ============================================================
+    // 🛠️ دوال عامة
+    // ============================================================
     function openAvatarModal() { document.getElementById('modal-avatar').classList.remove('hidden'); }
     function closeAvatarModal() { document.getElementById('modal-avatar').classList.add('hidden'); }
     function openSettingsModal() { document.getElementById('modal-settings').classList.remove('hidden'); }
@@ -1601,7 +1886,6 @@
     function toggleSidebar() { document.getElementById('sidebar-drawer').classList.toggle('translate-x-full'); }
     function toggleAiChat() { document.getElementById('ai-chat-box').classList.toggle('hidden'); }
 
-    // ✅ إصلاح: دالة الذكاء الاصطناعي
     function sendAiMessage() {
       const input = document.getElementById('ai-input');
       const text = input.value.trim();
@@ -1631,6 +1915,16 @@
       const file = e.target.files[0];
       if (!file || !user) return;
 
+      // التحقق من الحجم والنوع
+      if (file.size > 5 * 1024 * 1024) {
+        alert('⚠️ حجم الصورة يتجاوز 5 ميجابايت');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        alert('⚠️ يرجى اختيار صورة فقط');
+        return;
+      }
+
       try {
         const filePath = `avatars/${user.uid}_${Date.now()}`;
         const fileRef = storage.ref().child(filePath);
@@ -1639,7 +1933,11 @@
 
         await db.collection('users').doc(user.uid).update({ avatar: downloadUrl });
         closeAvatarModal();
-      } catch (err) { alert(err.message); }
+        showToast('✅ تم تحديث الصورة الشخصية', 'info');
+      } catch (err) {
+        console.error("❌ خطأ في رفع الصورة الشخصية:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
     async function togglePrivacySetting() {
@@ -1648,10 +1946,16 @@
       const isPrivate = document.getElementById('setting-privacy').value === 'private';
       try {
         await db.collection('users').doc(user.uid).update({ isPrivate: isPrivate });
-      } catch (err) { alert(err.message); }
+        showToast(`✅ تم تغيير الخصوصية إلى ${isPrivate ? 'خاص' : 'عام'}`, 'info');
+      } catch (err) {
+        console.error("❌ خطأ في تغيير الخصوصية:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
-    // نظام الدردشة
+    // ============================================================
+    // 💬 نظام الدردشة
+    // ============================================================
     function getChatId(uid1, uid2) {
       return [uid1, uid2].sort().join('_');
     }
@@ -1752,7 +2056,10 @@
           });
           container.scrollTop = container.scrollHeight;
         });
-      } catch (err) { alert(err.message); }
+      } catch (err) { 
+        console.error("❌ خطأ في فتح المحادثة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
     function closeChatWindow() {
@@ -1784,10 +2091,15 @@
 
         const senderNick = currentUserProfile ? currentUserProfile.nickname : 'شخص ما';
         await sendNotificationToUser(activeChatPartnerUid, `وصلتك رسالة جديدة من ${senderNick}: "${text.substring(0, 30)}..."`, 'message');
-      } catch (err) { alert(err.message); }
+      } catch (err) {
+        console.error("❌ خطأ في إرسال الرسالة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
-    // ✅ إصلاح: تحميل المحادثات مع ترتيب حسب آخر رسالة
+    // ============================================================
+    // 📋 تحميل قائمة المحادثات
+    // ============================================================
     function loadChatsList() {
       const user = auth.currentUser;
       if (!user) return;
@@ -1838,9 +2150,15 @@
 
           container.innerHTML = rows.join('');
         }, err => {
+          console.error("❌ خطأ في تحميل المحادثات:", err);
           document.getElementById('chats-list-container').innerHTML = `<div class="text-center py-4 text-red-400 text-[11px]">تعذر تحميل المحادثات: ${err.message}</div>`;
         });
     }
+
+    // ============================================================
+    // 🚀 انتهاء السكربت
+    // ============================================================
+    console.log("✅ تم تحميل تطبيق كَلِمَة بنجاح");
   </script>
 </body>
 </html>
