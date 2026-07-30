@@ -142,7 +142,6 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    /* تحسين عرض رسائل الخطأ */
     .error-message {
       background: rgba(255, 0, 0, 0.1);
       border: 1px solid rgba(255, 0, 0, 0.3);
@@ -155,6 +154,37 @@
     }
     .error-message.show {
       display: block;
+    }
+
+    /* تنسيق شارة العدد */
+    .unread-badge {
+      background: #ec4899;
+      color: white;
+      font-size: 9px;
+      font-weight: 900;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+    }
+    .unread-dot {
+      width: 10px;
+      height: 10px;
+      background: #ec4899;
+      border-radius: 50%;
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      border: 2px solid #0f172a;
+      animation: pulse-dot 1.5s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
     }
   </style>
 </head>
@@ -296,7 +326,6 @@
             <div id="media-preview-content" class="w-full flex justify-center items-center"></div>
           </div>
           
-          <!-- حاوية لعرض أخطاء الرفع -->
           <div id="upload-error" class="error-message"></div>
 
           <div class="flex justify-between items-center border-t border-slate-800/80 pt-2.5">
@@ -642,7 +671,7 @@
     let profileUnsubscribe = null;
     let isViewingOwnProfile = true;
     let selectedFileToUpload = null;
-    let selectedFileInfo = null; // لتخزين معلومات الملف
+    let selectedFileInfo = null;
 
     let activeProfileUid = null;
     let viewedProfileUnsubscribe = null;
@@ -652,8 +681,8 @@
     let activeChatUnsubscribe = null;
     let activeChatId = null;
     let activeChatPartnerUid = null;
-    let notificationsUnsubscribe = null;      // للإشعارات الفورية (Toast)
-    let notificationsListenerUnsubscribe = null; // للإشعارات في صفحة التفاعلات
+    let notificationsUnsubscribe = null;
+    let notificationsListenerUnsubscribe = null;
     let lastHandledNotificationTime = Date.now();
 
     let livePostsUnsubscribe = null;
@@ -676,11 +705,8 @@
         friendBadge.textContent = incomingFriendRequestsCount > 9 ? '9+' : String(incomingFriendRequestsCount);
         friendBadge.classList.toggle('hidden', incomingFriendRequestsCount === 0);
       }
-      const chatBadge = document.getElementById('chat-requests-badge');
-      if (chatBadge) {
-        chatBadge.textContent = incomingMessageRequestsCount > 9 ? '9+' : String(incomingMessageRequestsCount);
-        chatBadge.classList.toggle('hidden', incomingMessageRequestsCount === 0);
-      }
+      // تحديث شارة الدردشة (سيتم إعادة حسابها في loadChatsList)
+      loadChatsList();
     }
 
     function escapeHtml(str) {
@@ -693,7 +719,6 @@
         .replace(/'/g, '&#039;');
     }
 
-    // عرض رسالة خطأ في واجهة المستخدم
     function showUploadError(message) {
       const errorEl = document.getElementById('upload-error');
       if (errorEl) {
@@ -913,7 +938,7 @@
     }
 
     // ============================================================
-    // 📰 تحميل الإشعارات وعرضها في صفحة التفاعلات (بدون orderBy لتجنب الفهرس)
+    // 📰 تحميل الإشعارات وعرضها في صفحة التفاعلات (بدون orderBy)
     // ============================================================
     function loadNotifications(userId) {
       if (notificationsListenerUnsubscribe) {
@@ -928,11 +953,10 @@
         .where('recipientId', '==', userId)
         .limit(50)
         .onSnapshot(snapshot => {
-          // الترتيب يدوياً في الجافاسكربت لتجنب الحاجة لفهرس مركب في Firestore
           const docs = snapshot.docs.sort((a, b) => {
             const aTime = a.data().createdAt ? a.data().createdAt.toMillis() : 0;
             const bTime = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
-            return bTime - aTime; // الأحدث أولاً
+            return bTime - aTime;
           });
 
           if (docs.length === 0) {
@@ -979,10 +1003,8 @@
         });
     }
 
-    // التمرير إلى منشور معين
     function scrollToPost(postId) {
       switchMainTab('home');
-      // الانتظار قليلاً حتى تظهر المنشورات
       setTimeout(() => {
         let postElement = document.querySelector(`[data-post-id="${postId}"]`);
         if (postElement) {
@@ -1125,6 +1147,8 @@
           await chatRef.update({ status: 'rejected' });
           showToast('تم رفض طلب الرسالة', 'info');
         }
+        // تحديث قائمة المحادثات لتحديث الشارة
+        loadChatsList();
       } catch (err) {
         console.error("❌ خطأ في الرد على طلب الرسالة:", err);
         alert('حدث خطأ: ' + err.message);
@@ -1398,7 +1422,6 @@
       const file = e.target.files[0];
       if (!file) return;
 
-      // التحقق من حجم الملف (حد أقصى 10 ميجابايت)
       const MAX_SIZE = 10 * 1024 * 1024;
       if (file.size > MAX_SIZE) {
         showUploadError('⚠️ حجم الملف يتجاوز 10 ميجابايت');
@@ -1406,7 +1429,6 @@
         return;
       }
 
-      // التحقق من نوع الملف
       if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
         showUploadError('⚠️ يرجى اختيار ملف صورة أو فيديو فقط');
         document.getElementById('post-media-file').value = '';
@@ -1434,12 +1456,10 @@
         previewContent.innerHTML = `<img src="${objectUrl}" class="max-h-44 rounded-xl object-contain">`;
       }
 
-      // عرض معلومات الملف
       const fileInfo = document.getElementById('file-info');
       fileInfo.textContent = `📎 ${selectedFileInfo.name} (${selectedFileInfo.size})`;
       fileInfo.classList.remove('hidden');
       
-      // إخفاء رسائل الخطأ السابقة
       document.getElementById('upload-error').classList.remove('show');
     }
 
@@ -1656,7 +1676,6 @@
 
       let ownerActionsHTML = '';
       if (isOwner) {
-        // ✅ إصلاح ثغرة XSS: استخدام encodeURIComponent
         const safeContent = encodeURIComponent(post.content || '');
         ownerActionsHTML = `
           <div class="flex items-center gap-2">
@@ -1732,7 +1751,6 @@
             : firebase.firestore.FieldValue.arrayUnion(user.uid)
         });
 
-        // إرسال إشعار عند أول لايك (وليس إلغاء)
         if (!alreadyLiked && postData.uid !== user.uid) {
           const userDoc = await db.collection('users').doc(user.uid).get();
           const userName = userDoc.exists ? userDoc.data().nickname : 'مستخدم';
@@ -1820,7 +1838,6 @@
         });
         input.value = '';
 
-        // إرسال إشعار لصاحب المنشور
         const postDoc = await db.collection('posts').doc(postId).get();
         if (postDoc.exists) {
           const postData = postDoc.data();
@@ -1915,7 +1932,6 @@
       const file = e.target.files[0];
       if (!file || !user) return;
 
-      // التحقق من الحجم والنوع
       if (file.size > 5 * 1024 * 1024) {
         alert('⚠️ حجم الصورة يتجاوز 5 ميجابايت');
         return;
@@ -1954,10 +1970,65 @@
     }
 
     // ============================================================
-    // 💬 نظام الدردشة
+    // 💬 نظام الدردشة (مع عداد الرسائل غير المقروءة)
     // ============================================================
     function getChatId(uid1, uid2) {
       return [uid1, uid2].sort().join('_');
+    }
+
+    // دالة تحديث شارة الدردشة العامة
+    function updateTotalUnreadBadge(totalUnread) {
+      const chatNavBadge = document.getElementById('chat-requests-badge');
+      if (!chatNavBadge) return;
+      const totalPending = incomingMessageRequestsCount || 0;
+      const total = totalUnread + totalPending;
+      if (total > 0) {
+        chatNavBadge.textContent = total > 9 ? '9+' : String(total);
+        chatNavBadge.classList.remove('hidden');
+      } else {
+        chatNavBadge.classList.add('hidden');
+      }
+    }
+
+    async function sendChatMessage() {
+      const user = auth.currentUser;
+      const input = document.getElementById('chat-message-input');
+      const text = input.value.trim();
+      if (!user || !activeChatId || !activeChatPartnerUid || !text) return;
+
+      input.value = '';
+      const chatRef = db.collection('chats').doc(activeChatId);
+
+      try {
+        await chatRef.collection('messages').add({
+          senderId: user.uid,
+          text: text,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        const chatDoc = await chatRef.get();
+        const chatData = chatDoc.data();
+        const unreadCounts = chatData.unreadCounts || {};
+
+        // زيادة عداد غير المقروء للمستلم
+        unreadCounts[activeChatPartnerUid] = (unreadCounts[activeChatPartnerUid] || 0) + 1;
+
+        await chatRef.update({
+          lastMessage: text,
+          lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+          unreadCounts: unreadCounts
+        });
+
+        const senderNick = currentUserProfile ? currentUserProfile.nickname : 'شخص ما';
+        await sendNotificationToUser(activeChatPartnerUid, `📩 ${senderNick}: "${text.substring(0, 30)}..."`, 'message');
+
+        // تحديث قائمة المحادثات لتحديث العداد فوراً
+        loadChatsList();
+
+      } catch (err) {
+        console.error("❌ خطأ في إرسال الرسالة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
     }
 
     async function openChatWithUser(targetUid, targetName, targetAvatar) {
@@ -1983,7 +2054,8 @@
             initiatedBy: user.uid,
             status: isMutualFriend ? 'accepted' : 'pending',
             lastMessage: '',
-            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+            unreadCounts: {}
           });
 
           if (!isMutualFriend) {
@@ -1995,7 +2067,6 @@
 
         let chatData = chatDoc.data() || {};
 
-        // ✅ إصلاح: رفع حالة المحادثة إذا أصبح الطرفان صديقين
         if (chatData.status === 'pending') {
           const [myDocCheck, targetDocCheck] = await Promise.all([
             db.collection('users').doc(user.uid).get(),
@@ -2029,6 +2100,16 @@
         document.getElementById('chat-pending-banner').classList.toggle('hidden', !isPendingForMe);
         document.getElementById('chat-waiting-banner').classList.toggle('hidden', !isWaitingForOther);
         document.getElementById('chat-input-bar').classList.toggle('hidden', isPendingForMe);
+
+        // تصفير عداد غير المقروء لهذه المحادثة
+        if (!isPendingForMe && !isWaitingForOther) {
+          const unreadCounts = chatData.unreadCounts || {};
+          if (unreadCounts[user.uid] > 0) {
+            unreadCounts[user.uid] = 0;
+            await chatRef.update({ unreadCounts: unreadCounts });
+            loadChatsList(); // تحديث فوري للقائمة
+          }
+        }
 
         if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
 
@@ -2069,36 +2150,8 @@
       document.getElementById('modal-chat-window').classList.add('hidden');
     }
 
-    async function sendChatMessage() {
-      const user = auth.currentUser;
-      const input = document.getElementById('chat-message-input');
-      const text = input.value.trim();
-      if (!user || !activeChatId || !activeChatPartnerUid || !text) return;
-
-      input.value = '';
-      const chatRef = db.collection('chats').doc(activeChatId);
-
-      try {
-        await chatRef.collection('messages').add({
-          senderId: user.uid,
-          text: text,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        await chatRef.update({
-          lastMessage: text,
-          lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        const senderNick = currentUserProfile ? currentUserProfile.nickname : 'شخص ما';
-        await sendNotificationToUser(activeChatPartnerUid, `وصلتك رسالة جديدة من ${senderNick}: "${text.substring(0, 30)}..."`, 'message');
-      } catch (err) {
-        console.error("❌ خطأ في إرسال الرسالة:", err);
-        alert('حدث خطأ: ' + err.message);
-      }
-    }
-
     // ============================================================
-    // 📋 تحميل قائمة المحادثات
+    // 📋 تحميل قائمة المحادثات (مع عرض عداد غير المقروء)
     // ============================================================
     function loadChatsList() {
       const user = auth.currentUser;
@@ -2123,8 +2176,11 @@
 
           if (visibleDocs.length === 0) {
             container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد محادثات بعد.. ابحث عن صديق وابدأ الدردشة!</div>';
+            updateTotalUnreadBadge(0);
             return;
           }
+
+          let totalUnread = 0;
 
           const rows = await Promise.all(visibleDocs.map(async doc => {
             const chat = doc.data();
@@ -2135,13 +2191,29 @@
             const isPendingMine = chat.status === 'pending' && chat.initiatedBy === user.uid;
             const pendingTag = isPendingMine ? '<span class="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded-full shrink-0">⏳ قيد الانتظار</span>' : '';
 
+            const unreadCounts = chat.unreadCounts || {};
+            const unreadCount = unreadCounts[user.uid] || 0;
+            totalUnread += unreadCount;
+
+            const unreadBadge = unreadCount > 0 
+              ? `<span class="unread-badge">${unreadCount > 9 ? '9+' : unreadCount}</span>`
+              : '';
+
+            const unreadDot = unreadCount > 0 ? `<span class="unread-dot"></span>` : '';
+
             return `
               <div onclick="openChatWithUser('${partnerUid}', '${(partner.nickname || '').replace(/'/g, "\\'")}', '${partner.avatar || ''}')" class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
                 <div class="flex items-center gap-3">
-                  <img src="${escapeHtml(partner.avatar)}" class="w-9 h-9 rounded-xl bg-slate-900 border border-cyan-400 object-cover">
+                  <div class="relative">
+                    <img src="${escapeHtml(partner.avatar)}" class="w-9 h-9 rounded-xl bg-slate-900 border border-cyan-400 object-cover">
+                    ${unreadDot}
+                  </div>
                   <div>
-                    <p class="text-xs font-bold text-white">${escapeHtml(partner.nickname)}</p>
-                    <p class="text-[10px] text-slate-400 truncate max-w-[160px]">${escapeHtml(chat.lastMessage) || 'ابدأ المحادثة الآن'}</p>
+                    <div class="flex items-center gap-2">
+                      <p class="text-xs font-bold text-white">${escapeHtml(partner.nickname)}</p>
+                      ${unreadBadge}
+                    </div>
+                    <p class="text-[10px] text-slate-400 truncate max-w-[140px]">${escapeHtml(chat.lastMessage) || 'ابدأ المحادثة الآن'}</p>
                   </div>
                 </div>
                 ${pendingTag}
@@ -2149,15 +2221,14 @@
           }));
 
           container.innerHTML = rows.join('');
+          updateTotalUnreadBadge(totalUnread);
+
         }, err => {
           console.error("❌ خطأ في تحميل المحادثات:", err);
           document.getElementById('chats-list-container').innerHTML = `<div class="text-center py-4 text-red-400 text-[11px]">تعذر تحميل المحادثات: ${err.message}</div>`;
         });
     }
 
-    // ============================================================
-    // 🚀 انتهاء السكربت
-    // ============================================================
     console.log("✅ تم تحميل تطبيق كَلِمَة بنجاح");
   </script>
 </body>
