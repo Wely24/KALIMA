@@ -80,6 +80,9 @@
   <div class="absolute top-1/4 -left-20 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none"></div>
   <div class="absolute bottom-1/4 -right-20 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none"></div>
 
+  <!-- حاوية الإشعارات الحية العائمة (Toast Notifications Container) -->
+  <div id="toast-container" class="fixed bottom-6 left-6 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
   <!-- 1️⃣ شاشة تسجيل الدخول والتسجيل -->
   <div id="step-auth" class="holo-panel p-8 rounded-3xl w-full max-w-md z-20 relative">
     <div class="text-center mb-8">
@@ -201,7 +204,7 @@
           <div id="friend-search-results" class="space-y-2"></div>
         </div>
 
-        <!-- ✍️ إضافة منشور جديد مع رفع الوسائط الخارجية (صور، لقطات شاشة، وفيديوهات) -->
+        <!-- ✍️ إضافة منشور جديد مع رفع الوسائط الخارجية -->
         <div class="bg-slate-950/70 p-4 rounded-2xl border border-purple-500/30 space-y-3 shadow-xl relative">
           <textarea id="post-input" rows="2" placeholder="اكتب كَلِمَتَك أو شارك صورة، لقطة شاشة، أو فيديو من جهازك... 📡" class="w-full bg-transparent text-xs text-white focus:outline-none resize-none placeholder-slate-600"></textarea>
           
@@ -498,11 +501,29 @@
     let viewedProfileUnsubscribe = null;
     let activeProfilePostsUnsubscribe = null;
 
-    // --- حالة الدردشة المباشرة ---
+    // --- حالة الدردشة المباشرة والإشعارات الفورية ---
     let chatsListUnsubscribe = null;
     let activeChatUnsubscribe = null;
     let activeChatId = null;
     let activeChatPartnerUid = null;
+    let notificationsUnsubscribe = null;
+    let lastHandledNotificationTime = Date.now(); // لتجنب إظهار الإشعارات القديمة عند الدخول
+
+    // --- إدارة مستمعي المنشورات والتعليقات (لمنع تسرب الذاكرة والتكرار) ---
+    let livePostsUnsubscribe = null;
+    let activeCommentsUnsubscribe = {}; // { postId: unsubscribeFn }
+    let currentMediaObjectUrl = null;   // لتحرير الذاكرة من معاينة الوسائط
+
+    // --- دالة أمان: تنقية أي نص قادم من المستخدمين قبل حقنه في innerHTML (لمنع XSS) ---
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
 
     function switchAuthTab(tab) {
       const loginForm = document.getElementById('login-form');
@@ -557,6 +578,7 @@
 
     function logout() {
       if (profileUnsubscribe) profileUnsubscribe();
+      if (notificationsUnsubscribe) { notificationsUnsubscribe(); notificationsUnsubscribe = null; }
       currentUserProfile = null;
       auth.signOut();
     }
@@ -566,11 +588,13 @@
         document.getElementById('step-auth').classList.add('hidden');
         document.getElementById('step-main').classList.remove('hidden');
 
+        lastHandledNotificationTime = Date.now(); // تصفير وقت الإشعارات مع كل تسجيل دخول جديد لنفس التبويب
         loadUserData(user);
         loadLivePosts();
         activeProfileUid = user.uid;
         loadProfilePosts(user.uid);
         loadChatsList();
+        initRealtimeNotifications(user.uid); // تفعيل مستمع الإشعارات الفورية للطرف الآخر
       } else {
         document.getElementById('step-auth').classList.remove('hidden');
         document.getElementById('step-main').classList.add('hidden');
@@ -578,8 +602,86 @@
         if (activeProfilePostsUnsubscribe) { activeProfilePostsUnsubscribe(); activeProfilePostsUnsubscribe = null; }
         if (chatsListUnsubscribe) { chatsListUnsubscribe(); chatsListUnsubscribe = null; }
         if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
+        if (notificationsUnsubscribe) { notificationsUnsubscribe(); notificationsUnsubscribe = null; }
+        // إلغاء مستمع المنشورات الحية ومستمعات كل التعليقات المفتوحة لمنع تراكمها بعد الخروج
+        if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
+        Object.values(activeCommentsUnsubscribe).forEach(unsub => unsub && unsub());
+        activeCommentsUnsubscribe = {};
       }
     });
+
+    // --- نظام الإشعارات الفورية الحية (Toast + Database Sync) ---
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      let borderColor = 'border-cyan-500/50';
+      let iconClass = 'fa-solid fa-bell text-cyan-400';
+      if (type === 'friend') {
+        borderColor = 'border-purple-500/50';
+        iconClass = 'fa-solid fa-user-plus text-purple-400';
+      } else if (type === 'message') {
+        borderColor = 'border-pink-500/50';
+        iconClass = 'fa-solid fa-paper-plane text-pink-400';
+      }
+
+      toast.className = `holo-panel pointer-events-auto p-3.5 rounded-2xl border ${borderColor} shadow-2xl flex items-center gap-3 w-72 animate-bounce transition-all duration-300`;
+      toast.innerHTML = `
+        <div class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0">
+          <i class="${iconClass}"></i>
+        </div>
+        <div class="flex-1">
+          <p class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">إشعار هولوجرامي فوري ⚡</p>
+          <p class="text-xs text-slate-100 mt-0.5">${message}</p>
+        </div>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 4500);
+    }
+
+    function initRealtimeNotifications(userId) {
+      if (notificationsUnsubscribe) notificationsUnsubscribe();
+
+      // الاستماع للإشعارات الجديدة الموجهة للمستخدم الحالي عبر Firestore
+      notificationsUnsubscribe = db.collection('notifications')
+        .where('recipientId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .limit(5)
+        .onSnapshot(snapshot => {
+          snapshot.docChanges().forEach(change => {
+            if (change.type === 'added') {
+              const data = change.doc.data();
+              const notifTime = data.createdAt ? data.createdAt.toMillis() : Date.now();
+              
+              // عرض الإشعار فقط إذا تم إنشاؤه بعد تسجيل دخول المستخدم الحالي لمنع تكرار القديم
+              if (notifTime > lastHandledNotificationTime) {
+                showToast(data.text, data.type || 'info');
+              }
+            }
+          });
+        }, err => {
+          console.log("Notifications listener note: ", err.message);
+        });
+    }
+
+    async function sendNotificationToUser(recipientUid, text, type) {
+      if (!recipientUid || recipientUid === auth.currentUser.uid) return;
+      try {
+        await db.collection('notifications').add({
+          recipientId: recipientUid,
+          senderId: auth.currentUser.uid,
+          text: text,
+          type: type,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Error sending notification:", err);
+      }
+    }
 
     function loadUserData(user) {
       if (profileUnsubscribe) profileUnsubscribe();
@@ -703,6 +805,10 @@
         } else {
           batch.update(targetRef, { followers: firebase.firestore.FieldValue.arrayUnion(user.uid) });
           batch.update(myRef, { following: firebase.firestore.FieldValue.arrayUnion(targetUid) });
+          
+          // إرسال إشعار فوري للطرف الآخر عند إضافة الصداقة / المتابعة
+          const myNick = currentUserProfile ? currentUserProfile.nickname : 'مستخدم';
+          await sendNotificationToUser(targetUid, `قام ${myNick} بإضافتك كص صديق/متابعتك! 🤝`, 'friend');
         }
 
         await batch.commit();
@@ -752,10 +858,10 @@
       resultsContainer.innerHTML = users.map(u => `
         <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
           <div class="flex items-center gap-2.5 cursor-pointer" onclick="viewUserProfile('${u.uid}')">
-            <img src="${u.avatar}" class="w-9 h-9 rounded-xl border border-cyan-400/50 bg-slate-950 object-cover">
+            <img src="${escapeHtml(u.avatar)}" class="w-9 h-9 rounded-xl border border-cyan-400/50 bg-slate-950 object-cover">
             <div>
-              <p class="text-xs font-bold text-white">${u.nickname}</p>
-              <p class="text-[10px] text-cyan-300/70">@${u.username}</p>
+              <p class="text-xs font-bold text-white">${escapeHtml(u.nickname)}</p>
+              <p class="text-[10px] text-cyan-300/70">@${escapeHtml(u.username)}</p>
             </div>
           </div>
           <button onclick="viewUserProfile('${u.uid}')" class="text-cyan-400 hover:text-white text-[10px] font-bold bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1.5 rounded-lg">عرض البروفايل</button>
@@ -787,8 +893,11 @@
       const file = e.target.files[0];
       if (!file) return;
 
+      if (currentMediaObjectUrl) { URL.revokeObjectURL(currentMediaObjectUrl); } // تحرير رابط المعاينة السابق قبل إنشاء واحد جديد
+
       selectedFileToUpload = file;
       const objectUrl = URL.createObjectURL(file);
+      currentMediaObjectUrl = objectUrl;
       const isVideo = file.type.startsWith('video');
 
       const previewContainer = document.getElementById('media-preview-container');
@@ -803,6 +912,7 @@
     }
 
     function clearMediaPreview() {
+      if (currentMediaObjectUrl) { URL.revokeObjectURL(currentMediaObjectUrl); currentMediaObjectUrl = null; }
       selectedFileToUpload = null;
       document.getElementById('media-preview-container').classList.add('hidden');
       document.getElementById('media-preview-content').innerHTML = '';
@@ -829,9 +939,7 @@
           const safeFileName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
           const filePath = `posts_media/${user.uid}_${Date.now()}_${safeFileName}`;
           
-          // استخدام storage().ref() مع bucket الافتراضي بشكل صحيح
           const fileRef = storage.ref().child(filePath);
-          
           const snapshot = await fileRef.put(file);
           const downloadUrl = await snapshot.ref.getDownloadURL();
 
@@ -900,7 +1008,8 @@
 
     function loadLivePosts() {
       const user = auth.currentUser;
-      db.collection('posts').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
+      if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
+      livePostsUnsubscribe = db.collection('posts').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
         const container = document.getElementById('posts-container');
         container.innerHTML = '';
         if (snapshot.empty) {
@@ -981,16 +1090,16 @@
         <div class="bg-slate-950/80 p-4 rounded-3xl border border-slate-800 space-y-3 hover:border-cyan-500/30 transition relative shadow-lg">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3 cursor-pointer" onclick="${isOwner ? 'viewMyOwnProfile()' : `viewUserProfile('${post.uid}')`}">
-              <img src="${post.authorAvatar}" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
+              <img src="${escapeHtml(post.authorAvatar)}" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
               <div>
-                <h4 class="text-xs font-bold text-white hover:underline">${post.authorName}</h4>
-                <p class="text-[9px] text-cyan-300/70 truncate max-w-[180px]">${post.authorBio || 'عضو في كَلِمَة'}</p>
+                <h4 class="text-xs font-bold text-white hover:underline">${escapeHtml(post.authorName)}</h4>
+                <p class="text-[9px] text-cyan-300/70 truncate max-w-[180px]">${escapeHtml(post.authorBio) || 'عضو في كَلِمَة'}</p>
               </div>
             </div>
             ${ownerActionsHTML}
           </div>
 
-          ${post.content ? `<p class="text-xs text-slate-200 leading-relaxed">${post.content}</p>` : ''}
+          ${post.content ? `<p class="text-xs text-slate-200 leading-relaxed">${escapeHtml(post.content)}</p>` : ''}
           ${mediaHTML}
 
           <div class="flex items-center gap-4 pt-2 border-t border-slate-900 text-xs text-slate-400">
@@ -1022,18 +1131,20 @@
       const user = auth.currentUser;
       if (!user) return;
       const postRef = db.collection('posts').doc(postId);
-      
+
       try {
         const doc = await postRef.get();
         if (!doc.exists) return;
-        let likes = doc.data().likes || [];
+        const likes = doc.data().likes || [];
+        const alreadyLiked = likes.includes(user.uid);
 
-        if (likes.includes(user.uid)) {
-          likes = likes.filter(id => id !== user.uid);
-        } else {
-          likes.push(user.uid);
-        }
-        await postRef.update({ likes: likes });
+        // استخدام arrayUnion/arrayRemove الذرية بدل الكتابة الكاملة للمصفوفة
+        // لمنع فقدان لايكات مستخدمين آخرين عند حدوث الضغط في نفس اللحظة تقريباً
+        await postRef.update({
+          likes: alreadyLiked
+            ? firebase.firestore.FieldValue.arrayRemove(user.uid)
+            : firebase.firestore.FieldValue.arrayUnion(user.uid)
+        });
       } catch (err) { alert(err.message); }
     }
 
@@ -1042,12 +1153,26 @@
       box.classList.toggle('hidden');
       if (!box.classList.contains('hidden')) {
         loadComments(postId);
+      } else if (activeCommentsUnsubscribe[postId]) {
+        // إلغاء المستمع عند إغلاق صندوق التعليقات لتوفير الموارد
+        activeCommentsUnsubscribe[postId]();
+        activeCommentsUnsubscribe[postId] = null;
       }
     }
 
     function loadComments(postId) {
-      db.collection('posts').doc(postId).collection('comments').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
+      // إلغاء مستمع التعليقات القديم لنفس المنشور قبل إنشاء واحد جديد (لمنع التراكم عند إعادة الفتح)
+      if (activeCommentsUnsubscribe[postId]) {
+        activeCommentsUnsubscribe[postId]();
+        activeCommentsUnsubscribe[postId] = null;
+      }
+
+      activeCommentsUnsubscribe[postId] = db.collection('posts').doc(postId).collection('comments').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
         const list = document.getElementById(`comments-list-${postId}`);
+        if (!list) { // العنصر لم يعد موجوداً في الصفحة (تم إعادة رسم المنشورات)، ألغِ المستمع نهائياً
+          if (activeCommentsUnsubscribe[postId]) { activeCommentsUnsubscribe[postId](); activeCommentsUnsubscribe[postId] = null; }
+          return;
+        }
         list.innerHTML = '';
         if (snapshot.empty) {
           list.innerHTML = '<div class="text-slate-500 text-center py-1 text-[10px]">لا توجد تعليقات بعد.. كن أول المعلقين!</div>';
@@ -1057,12 +1182,12 @@
           const c = doc.data();
           list.innerHTML += `
             <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex items-start gap-2">
-              <img src="${c.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user'}" class="w-6 h-6 rounded-lg object-cover border border-cyan-500/30">
+              <img src="${escapeHtml(c.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user')}" class="w-6 h-6 rounded-lg object-cover border border-cyan-500/30">
               <div class="flex-1">
                 <div class="flex justify-between items-center">
-                  <span class="font-bold text-cyan-300 text-[10px]">${c.authorName}</span>
+                  <span class="font-bold text-cyan-300 text-[10px]">${escapeHtml(c.authorName)}</span>
                 </div>
-                <p class="text-slate-200 text-[11px] mt-0.5">${c.text}</p>
+                <p class="text-slate-200 text-[11px] mt-0.5">${escapeHtml(c.text)}</p>
               </div>
             </div>
           `;
@@ -1104,6 +1229,15 @@
       else if (tab === 'likes') pageLikes.classList.remove('hidden');
       else if (tab === 'chat') pageChat.classList.remove('hidden');
       else if (tab === 'profile') pageProfile.classList.remove('hidden');
+
+      // تحديث تظليل الأيقونة النشطة في الشريط السفلي (الدردشة تُفتح من القائمة الجانبية وليس لها زر سفلي)
+      const navMap = { home: 'nav-home', likes: 'nav-likes', profile: 'nav-profile' };
+      ['nav-home', 'nav-likes', 'nav-profile'].forEach(id => {
+        const btn = document.getElementById(id);
+        const isActive = navMap[tab] === id;
+        btn.classList.toggle('text-cyan-400', isActive);
+        btn.classList.toggle('text-slate-600', !isActive);
+      });
     }
 
     function openAvatarModal() { document.getElementById('modal-avatar').classList.remove('hidden'); }
@@ -1139,7 +1273,7 @@
       } catch (err) { alert(err.message); }
     }
 
-    // --- نظام الدردشة المباشرة ---
+    // --- نظام الدردشة المباشرة مع التوافق التام وإشعارات الرسائل الفورية ---
     function getChatId(uid1, uid2) {
       return [uid1, uid2].sort().join('_');
     }
@@ -1161,7 +1295,6 @@
           });
         }
 
-        // إن لم تتوفر بيانات الاسم/الصورة (مثلاً عند الفتح من قائمة المحادثات)، اجلبها من ملف المستخدم
         if (!targetName || !targetAvatar) {
           const targetDoc = await db.collection('users').doc(targetUid).get();
           const data = targetDoc.exists ? targetDoc.data() : {};
@@ -1189,7 +1322,7 @@
             container.innerHTML += `
               <div class="flex ${isMine ? 'justify-start' : 'justify-end'}">
                 <div class="max-w-[75%] px-3 py-2 rounded-2xl text-xs ${isMine ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black rounded-br-none' : 'bg-slate-900 text-white border border-slate-800 rounded-bl-none'}">
-                  ${msg.text}
+                  ${escapeHtml(msg.text)}
                 </div>
               </div>`;
           });
@@ -1209,7 +1342,7 @@
       const user = auth.currentUser;
       const input = document.getElementById('chat-message-input');
       const text = input.value.trim();
-      if (!user || !activeChatId || !text) return;
+      if (!user || !activeChatId || !activeChatPartnerUid || !text) return;
 
       input.value = '';
       const chatRef = db.collection('chats').doc(activeChatId);
@@ -1224,6 +1357,10 @@
           lastMessage: text,
           lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
+        // إرسال إشعار فوري للطرف الآخر في المحادثة لضمان ظهوره لديه
+        const senderNick = currentUserProfile ? currentUserProfile.nickname : 'شخص ما';
+        await sendNotificationToUser(activeChatPartnerUid, `وصلتك رسالة جديدة من ${senderNick}: "${text.substring(0, 30)}..."`, 'message');
       } catch (err) { alert(err.message); }
     }
 
@@ -1252,10 +1389,10 @@
             return `
               <div onclick="openChatWithUser('${partnerUid}', '${(partner.nickname || '').replace(/'/g, "\\'")}', '${partner.avatar || ''}')" class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition">
                 <div class="flex items-center gap-3">
-                  <img src="${partner.avatar}" class="w-9 h-9 rounded-xl bg-slate-900 border border-cyan-400 object-cover">
+                  <img src="${escapeHtml(partner.avatar)}" class="w-9 h-9 rounded-xl bg-slate-900 border border-cyan-400 object-cover">
                   <div>
-                    <p class="text-xs font-bold text-white">${partner.nickname}</p>
-                    <p class="text-[10px] text-slate-400 truncate max-w-[160px]">${chat.lastMessage || 'ابدأ المحادثة الآن'}</p>
+                    <p class="text-xs font-bold text-white">${escapeHtml(partner.nickname)}</p>
+                    <p class="text-[10px] text-slate-400 truncate max-w-[160px]">${escapeHtml(chat.lastMessage) || 'ابدأ المحادثة الآن'}</p>
                   </div>
                 </div>
               </div>`;
