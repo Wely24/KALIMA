@@ -297,6 +297,23 @@
       </div>
       
       <div class="flex items-center gap-2">
+        <div class="relative">
+          <button id="header-settings-btn" onclick="toggleHeaderSettingsMenu(event)" class="hidden text-purple-300 hover:text-white p-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 text-base" aria-label="إعدادات الملف الشخصي">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+
+          <div id="header-settings-menu" class="hidden absolute top-[calc(100%+8px)] left-0 w-52 bg-slate-950/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden z-50 fade-in">
+            <button onclick="openAvatarModal(); closeHeaderSettingsMenu();" class="w-full text-right p-3 flex items-center gap-2.5 hover:bg-cyan-500/10 transition border-b border-slate-800/80">
+              <i class="fa-solid fa-image text-cyan-400 w-4 text-center"></i>
+              <span class="text-xs font-bold text-slate-200">تغيير الصورة الشخصية</span>
+            </button>
+            <button onclick="openSettingsModal(); closeHeaderSettingsMenu();" class="w-full text-right p-3 flex items-center gap-2.5 hover:bg-purple-500/10 transition">
+              <i class="fa-solid fa-sliders text-purple-400 w-4 text-center"></i>
+              <span class="text-xs font-bold text-slate-200">إعدادات الحساب والخصوصية</span>
+            </button>
+          </div>
+        </div>
+
         <button onclick="toggleSidebar()" class="text-cyan-400 hover:text-white p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-base" aria-label="القائمة">
           <i class="fa-solid fa-bars-staggered"></i>
         </button>
@@ -404,13 +421,6 @@
           
           <div class="relative inline-block my-1">
             <img id="profile-page-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-24 h-24 rounded-3xl border-2 border-cyan-400 mx-auto object-cover bg-slate-900 shadow-2xl" alt="الصورة الشخصية">
-            
-            <button id="self-avatar-edit-btn" onclick="openAvatarModal()" class="avatar-action-btn absolute -bottom-2 -right-2 border border-cyan-400/50 text-cyan-400 hover:text-white w-8 h-8 rounded-2xl text-xs font-black shadow-xl flex items-center justify-center" title="تغيير الصورة">
-              <i class="fa-solid fa-pen"></i>
-            </button>
-            <button id="self-settings-btn" onclick="openSettingsModal()" class="avatar-action-btn absolute -bottom-2 -left-2 border border-purple-500/50 text-purple-400 hover:text-white w-8 h-8 rounded-2xl text-xs font-black shadow-xl flex items-center justify-center" title="الإعدادات">
-              <i class="fa-solid fa-gear"></i>
-            </button>
           </div>
 
           <div>
@@ -423,12 +433,12 @@
           </div>
 
           <div class="flex justify-center items-center gap-6 pt-2 border-t border-slate-800/80">
-            <div class="text-center">
+            <div class="text-center cursor-pointer hover:opacity-75 transition" onclick="openFollowListModal('followers')">
               <span id="followers-count" class="block font-black text-sm text-cyan-400">0</span>
               <span class="text-[10px] text-slate-400">المتابعون</span>
             </div>
             <div class="w-px h-6 bg-slate-800"></div>
-            <div class="text-center">
+            <div class="text-center cursor-pointer hover:opacity-75 transition" onclick="openFollowListModal('following')">
               <span id="following-count" class="block font-black text-sm text-purple-400">0</span>
               <span class="text-[10px] text-slate-400">يتابع</span>
             </div>
@@ -646,6 +656,19 @@
     </div>
   </div>
 
+  <!-- نافذة قائمة المتابعين / المتابَعين -->
+  <div id="modal-follow-list" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+    <div class="holo-panel p-6 rounded-3xl border border-cyan-500/40 w-full max-w-sm space-y-4 max-h-[80vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-cyan-500/20 pb-2 shrink-0">
+        <h3 id="follow-list-title" class="text-xs font-bold text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-users"></i> المتابعون</h3>
+        <button onclick="closeFollowListModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="follow-list-container" class="space-y-2 overflow-y-auto no-scrollbar flex-1">
+        <div class="text-center py-4 text-slate-500 text-xs animate-pulse">جاري التحميل...</div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ============================================================
     // 🔥 إعداد Firebase
@@ -676,6 +699,8 @@
     let activeProfileUid = null;
     let viewedProfileUnsubscribe = null;
     let activeProfilePostsUnsubscribe = null;
+    let currentProfileFollowers = [];
+    let currentProfileFollowing = [];
 
     let chatsListUnsubscribe = null;
     let activeChatUnsubscribe = null;
@@ -693,6 +718,11 @@
     let messageRequestsIncomingUnsubscribe = null;
     let incomingFriendRequestsCount = 0;
     let incomingMessageRequestsCount = 0;
+    let lastKnownUnreadMessages = 0;
+
+    // ذاكرة تخزين مؤقت عامة لبيانات المستخدمين (تُستخدم لقائمة المحادثات وقائمة
+    // المتابعين/المتابَعين)، لتفادي إعادة جلب نفس البروفايل من Firestore بلا داعٍ
+    const userProfileCache = new Map();
 
     // ============================================================
     // 🛠️ دوال مساعدة (Helper Functions)
@@ -705,8 +735,11 @@
         friendBadge.textContent = incomingFriendRequestsCount > 9 ? '9+' : String(incomingFriendRequestsCount);
         friendBadge.classList.toggle('hidden', incomingFriendRequestsCount === 0);
       }
-      // تحديث شارة الدردشة (سيتم إعادة حسابها في loadChatsList)
-      loadChatsList();
+      // ملاحظة: لا داعي لاستدعاء loadChatsList() هنا — قائمة المحادثات لديها
+      // مستمع حي (onSnapshot) خاص بها على نفس مجموعة 'chats' ويتحدث تلقائياً.
+      // إعادة استدعائها هنا كانت تسبب إلغاء واشتراك القائمة وإعادة جلب بيانات
+      // كل صديق محادثة من جديد على أي تغيّر بسيط، وهو حمل غير ضروري.
+      updateTotalUnreadBadgeFromCache();
     }
 
     function escapeHtml(str) {
@@ -764,26 +797,57 @@
       }
     }
 
+    // 🌐 ترجمة أكواد أخطاء Firebase الشائعة لرسائل عربية مفهومة بدل النصوص الإنجليزية الخام
+    function translateAuthError(err) {
+      const map = {
+        'auth/invalid-email': 'البريد الإلكتروني غير صالح.',
+        'auth/user-disabled': 'تم تعطيل هذا الحساب.',
+        'auth/user-not-found': 'لا يوجد حساب مسجّل بهذا البريد الإلكتروني.',
+        'auth/wrong-password': 'كلمة المرور غير صحيحة.',
+        'auth/invalid-credential': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+        'auth/email-already-in-use': 'هذا البريد الإلكتروني مستخدم بالفعل، جرّب تسجيل الدخول بدلاً من ذلك.',
+        'auth/weak-password': 'كلمة المرور ضعيفة جداً، يجب أن تكون 6 أحرف على الأقل.',
+        'auth/too-many-requests': 'محاولات كثيرة جداً، الرجاء المحاولة لاحقاً.',
+        'auth/network-request-failed': 'تعذر الاتصال، تحقق من اتصال الإنترنت.'
+      };
+      return map[err.code] || err.message;
+    }
+
     async function handleLogin(e) {
       e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn ? btn.innerText : '';
       try {
+        if (btn) { btn.disabled = true; btn.innerText = 'جاري الدخول... ⏳'; btn.style.opacity = '0.7'; }
         await auth.signInWithEmailAndPassword(
           document.getElementById('login-email').value.trim(),
           document.getElementById('login-password').value
         );
       } catch (err) {
-        alert('❌ فشل تسجيل الدخول: ' + err.message);
+        alert('❌ فشل تسجيل الدخول: ' + translateAuthError(err));
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = originalText; btn.style.opacity = '1'; }
       }
     }
 
     async function handleRegister(e) {
       e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn ? btn.innerText : '';
+      const nickname = document.getElementById('reg-username').value.trim();
+
+      if (nickname.length < 2) {
+        alert('⚠️ الرجاء إدخال اسم مستعار لا يقل عن حرفين.');
+        return;
+      }
+
       try {
+        if (btn) { btn.disabled = true; btn.innerText = 'جاري الإنشاء... ⏳'; btn.style.opacity = '0.7'; }
+
         const userCred = await auth.createUserWithEmailAndPassword(
           document.getElementById('reg-email').value.trim(),
           document.getElementById('reg-password').value
         );
-        const nickname = document.getElementById('reg-username').value.trim();
         const uid = userCred.user.uid;
 
         await userCred.user.updateProfile({ displayName: nickname });
@@ -802,15 +866,23 @@
 
         location.reload();
       } catch (err) {
-        alert('❌ فشل إنشاء الحساب: ' + err.message);
+        alert('❌ فشل إنشاء الحساب: ' + translateAuthError(err));
+        if (btn) { btn.disabled = false; btn.innerText = originalText; btn.style.opacity = '1'; }
       }
     }
 
     function logout() {
-      if (profileUnsubscribe) profileUnsubscribe();
+      if (profileUnsubscribe) { profileUnsubscribe(); profileUnsubscribe = null; }
       if (notificationsUnsubscribe) { notificationsUnsubscribe(); notificationsUnsubscribe = null; }
       if (notificationsListenerUnsubscribe) { notificationsListenerUnsubscribe(); notificationsListenerUnsubscribe = null; }
       currentUserProfile = null;
+
+      // 🔒 تفريغ حقول تسجيل الدخول/التسجيل حتى لا تبقى بيانات حساسة ظاهرة على جهاز مشترك
+      const loginEmail = document.getElementById('login-email');
+      const loginPassword = document.getElementById('login-password');
+      if (loginEmail) loginEmail.value = '';
+      if (loginPassword) loginPassword.value = '';
+
       auth.signOut();
     }
 
@@ -834,6 +906,7 @@
       } else {
         document.getElementById('step-auth').classList.remove('hidden');
         document.getElementById('step-main').classList.add('hidden');
+        if (profileUnsubscribe) { profileUnsubscribe(); profileUnsubscribe = null; }
         if (viewedProfileUnsubscribe) { viewedProfileUnsubscribe(); viewedProfileUnsubscribe = null; }
         if (activeProfilePostsUnsubscribe) { activeProfilePostsUnsubscribe(); activeProfilePostsUnsubscribe = null; }
         if (chatsListUnsubscribe) { chatsListUnsubscribe(); chatsListUnsubscribe = null; }
@@ -845,6 +918,20 @@
         if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
         Object.values(activeCommentsUnsubscribe).forEach(unsub => unsub && unsub());
         activeCommentsUnsubscribe = {};
+
+        // 🔧 إصلاح: إعادة تصفير كامل حالة الجلسة عند الخروج، حتى لا تظهر بيانات
+        // المستخدم السابق للحظة عند دخول مستخدم آخر على نفس الجهاز.
+        currentUserProfile = null;
+        isViewingOwnProfile = true;
+        activeProfileUid = null;
+        activeChatId = null;
+        activeChatPartnerUid = null;
+        currentProfileFollowers = [];
+        currentProfileFollowing = [];
+        incomingFriendRequestsCount = 0;
+        incomingMessageRequestsCount = 0;
+        lastKnownUnreadMessages = 0;
+        userProfileCache.clear();
       }
     });
 
@@ -876,14 +963,14 @@
       if (type === 'friend_request' && data.requestId) {
         actionsHTML = `
           <div class="flex gap-1.5 mt-2 pointer-events-auto">
-            <button onclick="respondToFriendRequest('${data.requestId}', true); this.closest('.holo-panel').remove();" class="flex-1 bg-cyan-500 text-black text-[10px] font-black py-1.5 rounded-lg hover:opacity-90 transition">قبول ✅</button>
-            <button onclick="respondToFriendRequest('${data.requestId}', false); this.closest('.holo-panel').remove();" class="flex-1 bg-slate-800 text-slate-300 text-[10px] font-bold py-1.5 rounded-lg hover:text-white transition">رفض ❌</button>
+            <button onclick="respondToFriendRequest('${escapeForInlineJs(data.requestId)}', true); this.closest('.holo-panel').remove();" class="flex-1 bg-cyan-500 text-black text-[10px] font-black py-1.5 rounded-lg hover:opacity-90 transition">قبول ✅</button>
+            <button onclick="respondToFriendRequest('${escapeForInlineJs(data.requestId)}', false); this.closest('.holo-panel').remove();" class="flex-1 bg-slate-800 text-slate-300 text-[10px] font-bold py-1.5 rounded-lg hover:text-white transition">رفض ❌</button>
           </div>`;
       } else if (type === 'message_request' && data.chatId) {
         actionsHTML = `
           <div class="flex gap-1.5 mt-2 pointer-events-auto">
-            <button onclick="respondToMessageRequest('${data.chatId}', true); this.closest('.holo-panel').remove();" class="flex-1 bg-pink-500 text-black text-[10px] font-black py-1.5 rounded-lg hover:opacity-90 transition">فتح الرسالة 📩</button>
-            <button onclick="respondToMessageRequest('${data.chatId}', false); this.closest('.holo-panel').remove();" class="flex-1 bg-slate-800 text-slate-300 text-[10px] font-bold py-1.5 rounded-lg hover:text-white transition">رفض ❌</button>
+            <button onclick="respondToMessageRequest('${escapeForInlineJs(data.chatId)}', true); this.closest('.holo-panel').remove();" class="flex-1 bg-pink-500 text-black text-[10px] font-black py-1.5 rounded-lg hover:opacity-90 transition">فتح الرسالة 📩</button>
+            <button onclick="respondToMessageRequest('${escapeForInlineJs(data.chatId)}', false); this.closest('.holo-panel').remove();" class="flex-1 bg-slate-800 text-slate-300 text-[10px] font-bold py-1.5 rounded-lg hover:text-white transition">رفض ❌</button>
           </div>`;
       }
 
@@ -1184,6 +1271,8 @@
           updateUserUI(data.nickname, data.username, data.avatar, data.bio, data.isVerified, data.isPrivate);
           document.getElementById('followers-count').innerText = (data.followers || []).length;
           document.getElementById('following-count').innerText = (data.following || []).length;
+          currentProfileFollowers = data.followers || [];
+          currentProfileFollowing = data.following || [];
         }
       }, err => {
         console.error("❌ خطأ في تحميل بيانات المستخدم:", err);
@@ -1208,6 +1297,8 @@
 
       const privacySelect = document.getElementById('setting-privacy');
       if (privacySelect) privacySelect.value = isPrivate ? 'private' : 'public';
+      const privacyDesc = document.getElementById('privacy-desc');
+      if (privacyDesc) privacyDesc.textContent = isPrivate ? 'خاص (فقط أصدقاؤك يرون منشوراتك)' : 'عام (يمكن للجميع رؤية منشوراتك)';
 
       const verifiedBadge = document.getElementById('main-verified-badge');
       const verifiedTag = document.getElementById('profile-verified-tag');
@@ -1228,10 +1319,11 @@
       updateUserUI(currentUserProfile.nickname, currentUserProfile.username, currentUserProfile.avatar, currentUserProfile.bio, currentUserProfile.isVerified, currentUserProfile.isPrivate);
       document.getElementById('followers-count').innerText = (currentUserProfile.followers || []).length;
       document.getElementById('following-count').innerText = (currentUserProfile.following || []).length;
+      currentProfileFollowers = currentUserProfile.followers || [];
+      currentProfileFollowing = currentUserProfile.following || [];
 
       document.getElementById('profile-back-btn').classList.add('hidden');
-      document.getElementById('self-avatar-edit-btn').classList.remove('hidden');
-      document.getElementById('self-settings-btn').classList.remove('hidden');
+      document.getElementById('header-settings-btn').classList.remove('hidden');
       document.getElementById('self-profile-actions').classList.remove('hidden');
       document.getElementById('other-profile-actions').classList.add('hidden');
 
@@ -1248,8 +1340,7 @@
       activeProfileUid = uid;
 
       document.getElementById('profile-back-btn').classList.remove('hidden');
-      document.getElementById('self-avatar-edit-btn').classList.add('hidden');
-      document.getElementById('self-settings-btn').classList.add('hidden');
+      document.getElementById('header-settings-btn').classList.add('hidden');
       document.getElementById('self-profile-actions').classList.add('hidden');
       document.getElementById('other-profile-actions').classList.remove('hidden');
 
@@ -1263,6 +1354,8 @@
         updateUserUI(data.nickname, data.username, data.avatar, data.bio, data.isVerified, data.isPrivate);
         document.getElementById('followers-count').innerText = (data.followers || []).length;
         document.getElementById('following-count').innerText = (data.following || []).length;
+        currentProfileFollowers = data.followers || [];
+        currentProfileFollowing = data.following || [];
 
         const isFollowing = (data.followers || []).includes(user.uid);
         const followLabel = document.getElementById('follow-toggle-label');
@@ -1354,6 +1447,48 @@
     }
 
     // ============================================================
+    // 👥 قائمة المتابعين / المتابَعين (تُفتح بالنقر على العددين في البروفايل)
+    // ============================================================
+    function openFollowListModal(type) {
+      const titleEl = document.getElementById('follow-list-title');
+      titleEl.innerHTML = type === 'followers'
+        ? '<i class="fa-solid fa-users"></i> المتابعون'
+        : '<i class="fa-solid fa-user-group"></i> يتابع';
+      document.getElementById('modal-follow-list').classList.remove('hidden');
+      const list = type === 'followers' ? currentProfileFollowers : currentProfileFollowing;
+      renderFollowList(list);
+    }
+
+    function closeFollowListModal() {
+      document.getElementById('modal-follow-list').classList.add('hidden');
+    }
+
+    async function renderFollowList(uids) {
+      const container = document.getElementById('follow-list-container');
+      if (!uids || uids.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد حسابات لعرضها حالياً</div>';
+        return;
+      }
+
+      container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs animate-pulse">جاري التحميل...</div>';
+      try {
+        const profiles = await Promise.all(uids.map(async uid => ({ uid, data: await getUserProfileCached(uid) })));
+        container.innerHTML = profiles.map(p => `
+          <div onclick="viewUserProfile('${p.uid}'); closeFollowListModal();" class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2.5 cursor-pointer hover:border-cyan-500/50 transition">
+            <img src="${escapeHtml(p.data.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user')}" class="w-9 h-9 rounded-xl border border-cyan-400/50 bg-slate-950 object-cover">
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-white truncate">${escapeHtml(p.data.nickname || 'مستخدم كَلِمَة')}</p>
+              <p class="text-[10px] text-cyan-300/70 truncate">@${escapeHtml(p.data.username || '')}</p>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error("❌ خطأ في تحميل قائمة المتابعين:", err);
+        container.innerHTML = `<div class="text-center py-4 text-red-400 text-[11px]">تعذر تحميل القائمة: ${err.message}</div>`;
+      }
+    }
+
+    // ============================================================
     // 🔍 البحث عن أصدقاء
     // ============================================================
     async function searchFriends() {
@@ -1418,14 +1553,35 @@
 
       if (!newNick || !newUsername) return alert("الرجاء تعبئة اسم المستخدم والاسم المستعار.");
 
+      // 🔧 التحقق من صيغة اسم المستخدم: أحرف إنجليزية/أرقام/شرطة سفلية فقط، بين 3 و20 حرفاً
+      if (!/^[A-Za-z0-9_]{3,20}$/.test(newUsername)) {
+        return alert("⚠️ اسم المستخدم يجب أن يتكوّن من أحرف إنجليزية وأرقام و( _ ) فقط، بين 3 و20 حرفاً.");
+      }
+
+      const btn = document.getElementById('save-profile-btn');
+      const originalText = btn ? btn.innerText : '';
+
       try {
+        if (btn) { btn.disabled = true; btn.innerText = 'جاري الحفظ... ⏳'; btn.style.opacity = '0.7'; }
+
+        // 🔧 التحقق أن اسم المستخدم غير مستخدم من قبل حساب آخر قبل الحفظ
+        const clashSnap = await db.collection('users').where('username', '==', newUsername).limit(1).get();
+        const clash = clashSnap.docs.find(d => d.id !== user.uid);
+        if (clash) {
+          alert("⚠️ اسم المستخدم هذا مستخدم بالفعل من قبل حساب آخر، الرجاء اختيار اسم مختلف.");
+          return;
+        }
+
         await user.updateProfile({ displayName: newNick });
         await db.collection('users').doc(user.uid).update({ nickname: newNick, username: newUsername, bio: newBio });
+        userProfileCache.delete(user.uid);
         alert("تم تحديث الملف الشخصي بنجاح 💾!");
         closeEditProfileModal();
       } catch (err) { 
         console.error("❌ خطأ في حفظ التغييرات:", err);
         alert('حدث خطأ: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = originalText; btn.style.opacity = '1'; }
       }
     }
 
@@ -1619,7 +1775,7 @@
           if (post.media && post.media.url) {
             const isVideo = post.media.type === 'video';
             exploreHTML += `
-              <div class="relative aspect-square rounded-lg overflow-hidden border border-slate-800 bg-slate-900 group cursor-pointer" onclick="window.open('${escapeForInlineJs(post.media.url)}', '_blank')">
+              <div class="relative aspect-square rounded-lg overflow-hidden border border-slate-800 bg-slate-900 group cursor-pointer" onclick="window.open('${escapeForInlineJs(post.media.url)}', '_blank', 'noopener,noreferrer')">
                 ${isVideo
                   ? `<video src="${escapeHtml(post.media.url)}" class="w-full h-full object-cover" muted></video>
                      <span class="absolute top-1 right-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-md"><i class="fa-solid fa-play"></i></span>`
@@ -1914,6 +2070,23 @@
     function closeAvatarModal() { document.getElementById('modal-avatar').classList.add('hidden'); }
     function openSettingsModal() { document.getElementById('modal-settings').classList.remove('hidden'); }
     function closeSettingsModal() { document.getElementById('modal-settings').classList.add('hidden'); }
+
+    // ⚙️ قائمة الإعدادات المدمجة (بجنب زر القائمة العلوي)
+    function toggleHeaderSettingsMenu(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('header-settings-menu').classList.toggle('hidden');
+    }
+    function closeHeaderSettingsMenu() {
+      document.getElementById('header-settings-menu').classList.add('hidden');
+    }
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('header-settings-menu');
+      const btn = document.getElementById('header-settings-btn');
+      if (!menu || !btn) return;
+      if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
     function toggleSidebar() { document.getElementById('sidebar-drawer').classList.toggle('translate-x-full'); }
     function toggleAiChat() { document.getElementById('ai-chat-box').classList.toggle('hidden'); }
 
@@ -1948,25 +2121,36 @@
 
       if (file.size > 5 * 1024 * 1024) {
         alert('⚠️ حجم الصورة يتجاوز 5 ميجابايت');
+        e.target.value = '';
         return;
       }
       if (!file.type.startsWith('image/')) {
         alert('⚠️ يرجى اختيار صورة فقط');
+        e.target.value = '';
         return;
       }
 
+      const uploadBtn = document.getElementById('avatar-upload-btn');
+      const originalText = uploadBtn ? uploadBtn.innerHTML : '';
+
       try {
+        if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الرفع...'; }
+
         const filePath = `avatars/${user.uid}_${Date.now()}`;
         const fileRef = storage.ref().child(filePath);
         const snapshot = await fileRef.put(file);
         const downloadUrl = await snapshot.ref.getDownloadURL();
 
         await db.collection('users').doc(user.uid).update({ avatar: downloadUrl });
+        userProfileCache.delete(user.uid);
         closeAvatarModal();
         showToast('✅ تم تحديث الصورة الشخصية', 'info');
       } catch (err) {
         console.error("❌ خطأ في رفع الصورة الشخصية:", err);
         alert('حدث خطأ: ' + err.message);
+      } finally {
+        e.target.value = '';
+        if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.innerHTML = originalText; }
       }
     }
 
@@ -1976,6 +2160,10 @@
       const isPrivate = document.getElementById('setting-privacy').value === 'private';
       try {
         await db.collection('users').doc(user.uid).update({ isPrivate: isPrivate });
+        const descEl = document.getElementById('privacy-desc');
+        if (descEl) {
+          descEl.textContent = isPrivate ? 'خاص (فقط أصدقاؤك يرون منشوراتك)' : 'عام (يمكن للجميع رؤية منشوراتك)';
+        }
         showToast(`✅ تم تغيير الخصوصية إلى ${isPrivate ? 'خاص' : 'عام'}`, 'info');
       } catch (err) {
         console.error("❌ خطأ في تغيير الخصوصية:", err);
@@ -1992,6 +2180,7 @@
 
     // دالة تحديث شارة الدردشة العامة
     function updateTotalUnreadBadge(totalUnread) {
+      lastKnownUnreadMessages = totalUnread;
       const chatNavBadge = document.getElementById('chat-requests-badge');
       if (!chatNavBadge) return;
       const totalPending = incomingMessageRequestsCount || 0;
@@ -2002,6 +2191,21 @@
       } else {
         chatNavBadge.classList.add('hidden');
       }
+    }
+
+    // نسخة خفيفة تعيد رسم الشارة من آخر رقم معروف بدون إعادة تحميل قائمة المحادثات بالكامل
+    function updateTotalUnreadBadgeFromCache() {
+      updateTotalUnreadBadge(lastKnownUnreadMessages);
+    }
+
+    async function getUserProfileCached(uid) {
+      if (userProfileCache.has(uid)) {
+        return userProfileCache.get(uid);
+      }
+      const userDoc = await db.collection('users').doc(uid).get();
+      const data = userDoc.exists ? userDoc.data() : { nickname: 'مستخدم كَلِمَة', username: '', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=user' };
+      userProfileCache.set(uid, data);
+      return data;
     }
 
     async function sendChatMessage() {
@@ -2131,19 +2335,31 @@
           container.innerHTML = '';
           if (snapshot.empty) {
             container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">ابدأ المحادثة الآن، أرسل أول رسالة! 💬</div>';
-            return;
+          } else {
+            snapshot.forEach(doc => {
+              const msg = doc.data();
+              const isMine = msg.senderId === user.uid;
+              container.innerHTML += `
+                <div class="flex ${isMine ? 'justify-start' : 'justify-end'}">
+                  <div class="max-w-[75%] px-3 py-2 rounded-2xl text-xs ${isMine ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black rounded-br-none' : 'bg-slate-900 text-white border border-slate-800 rounded-bl-none'}">
+                    ${escapeHtml(msg.text)}
+                  </div>
+                </div>`;
+            });
+            container.scrollTop = container.scrollHeight;
           }
-          snapshot.forEach(doc => {
-            const msg = doc.data();
-            const isMine = msg.senderId === user.uid;
-            container.innerHTML += `
-              <div class="flex ${isMine ? 'justify-start' : 'justify-end'}">
-                <div class="max-w-[75%] px-3 py-2 rounded-2xl text-xs ${isMine ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black rounded-br-none' : 'bg-slate-900 text-white border border-slate-800 rounded-bl-none'}">
-                  ${escapeHtml(msg.text)}
-                </div>
-              </div>`;
-          });
-          container.scrollTop = container.scrollHeight;
+
+          // 🔧 إصلاح: تصفير عداد غير المقروء أيضاً عند وصول رسائل جديدة والنافذة مفتوحة،
+          // وليس فقط لحظة فتح المحادثة لأول مرة.
+          if (activeChatId === chatId && auth.currentUser) {
+            chatRef.get().then(freshDoc => {
+              if (!freshDoc.exists) return;
+              const counts = freshDoc.data().unreadCounts || {};
+              if (counts[user.uid] > 0) {
+                chatRef.update({ [`unreadCounts.${user.uid}`]: 0 }).catch(() => {});
+              }
+            }).catch(() => {});
+          }
         });
       } catch (err) { 
         console.error("❌ خطأ في فتح المحادثة:", err);
@@ -2194,8 +2410,7 @@
             const chat = doc.data();
             const partnerUid = chat.participants.find(uid => uid !== user.uid);
             if (!partnerUid) return '';
-            const partnerDoc = await db.collection('users').doc(partnerUid).get();
-            const partner = partnerDoc.exists ? partnerDoc.data() : { nickname: 'مستخدم كَلِمَة', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=user' };
+            const partner = await getUserProfileCached(partnerUid);
             const isPendingMine = chat.status === 'pending' && chat.initiatedBy === user.uid;
             const pendingTag = isPendingMine ? '<span class="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded-full shrink-0">⏳ قيد الانتظار</span>' : '';
 
