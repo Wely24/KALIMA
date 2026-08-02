@@ -2280,9 +2280,16 @@
       livePostsOrder = [];
       livePostsMediaHtmlMap.clear();
 
+      // 🐞 إصلاح إضافي (نفس سبب المشكلة الموثقة أعلاه لاستعلام منشوراتي الخاصة):
+      // الجمع بين where('isPrivate','==',false) و orderBy('createdAt') يتطلب فهرساً
+      // مركّباً (Composite Index) غير موجود، فيفشل الاستعلام بالكامل برسالة "The query
+      // requires an index" — وهذا بالضبط الخطأ الذي كان يظهر في الواجهة
+      // ("تعذر تحميل المنشورات العامة"). الحل: نحذف orderBy من الاستعلام (شرط
+      // المساواة وحده لا يحتاج فهرساً مركّباً) ونعتمد كلياً على الترتيب الذي يتم
+      // في JavaScript داخل renderLiveFeed بعد دمج النتيجتين — تماماً كما فعلنا مع
+      // استعلام منشوراتي الخاصة تحت. لا حاجة بعد الآن لإنشاء أي فهرس يدوياً.
       livePostsPublicUnsubscribe = db.collection('posts')
         .where('isPrivate', '==', false)
-        .orderBy('createdAt', 'desc')
         .limit(50)
         .onSnapshot(snapshot => {
           livePostsPublicMap.clear();
