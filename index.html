@@ -186,6 +186,22 @@
       0%, 100% { transform: scale(1); opacity: 1; }
       50% { transform: scale(1.3); opacity: 0.7; }
     }
+
+    /* 🌐 القائمة الجانبية: الجهة واتجاه الانزلاق يتغيران تلقائياً حسب اتجاه
+       اللغة الحالية. في اللغات RTL (كالعربية) تفتح من اليمين كالمعتاد،
+       وفي اللغات LTR (كالإنجليزية) تفتح من اليسار كما يتوقعه مستخدم تلك
+       اللغة، بدل أن تبقى مثبّتة على اليمين دائماً بغضّ النظر عن اللغة. */
+    html[dir="rtl"] .side-drawer {
+      right: 0; left: auto;
+      border-left: 1px solid rgba(0, 242, 254, 0.3);
+      transform: translateX(100%);
+    }
+    html[dir="ltr"] .side-drawer {
+      left: 0; right: auto;
+      border-right: 1px solid rgba(0, 242, 254, 0.3);
+      transform: translateX(-100%);
+    }
+    .side-drawer.drawer-open { transform: translateX(0) !important; }
   </style>
 </head>
 <body class="cyber-grid text-slate-100 flex items-center justify-center p-0 md:p-4 select-none overflow-hidden relative min-h-screen">
@@ -198,47 +214,85 @@
 
   <!-- 1️⃣ شاشة تسجيل الدخول والتسجيل -->
   <div id="step-auth" class="holo-panel p-8 rounded-3xl w-full max-w-md z-20 relative">
+
+    <!-- 🌐 مبدّل لغة الواجهة (متاح قبل الدخول أيضاً) -->
+    <div class="absolute top-4 left-4 z-10">
+      <select id="auth-language-switcher" onchange="changeAppLanguage(this.value)" class="bg-slate-950/90 border border-cyan-500/30 text-cyan-300 text-[10px] rounded-xl py-1.5 px-2 focus:outline-none max-w-[110px]"></select>
+    </div>
+
     <div class="text-center mb-8">
       <div class="inline-block p-3 rounded-2xl bg-cyan-500/10 border border-cyan-400/30 mb-2">
         <i class="fa-solid fa-microchip text-3xl text-cyan-400 animate-pulse"></i>
       </div>
       <h1 class="text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-500 neon-text-cyan">كَلِمَة</h1>
-      <p class="text-[10px] text-cyan-300/70 tracking-widest uppercase mt-1">الجيل القادم من التواصل الهولوجرامي 🌌</p>
+      <p data-i18n="appTagline" class="text-[10px] text-cyan-300/70 tracking-widest uppercase mt-1">الجيل القادم من التواصل الهولوجرامي 🌌</p>
     </div>
 
     <div class="flex bg-slate-950/80 p-1.5 rounded-2xl mb-6 border border-cyan-500/30">
-      <button id="btn-tab-login" onclick="switchAuthTab('login')" class="w-1/2 py-2 text-center font-bold text-xs rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-lg transition duration-300">تسجيل الدخول</button>
-      <button id="btn-tab-register" onclick="switchAuthTab('register')" class="w-1/2 py-2 text-center font-bold text-xs rounded-xl text-cyan-300 hover:text-white transition duration-300">هوية جديدة</button>
+      <button id="btn-tab-login" onclick="switchAuthTab('login')" data-i18n="tabLogin" class="w-1/2 py-2 text-center font-bold text-xs rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-lg transition duration-300">تسجيل الدخول</button>
+      <button id="btn-tab-register" onclick="switchAuthTab('register')" data-i18n="tabRegister" class="w-1/2 py-2 text-center font-bold text-xs rounded-xl text-cyan-300 hover:text-white transition duration-300">هوية جديدة</button>
     </div>
 
     <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
       <div>
-        <label class="block text-[10px] uppercase font-bold mb-1 text-cyan-300">البريد الإلكتروني</label>
+        <label data-i18n="labelEmail" class="block text-[10px] uppercase font-bold mb-1 text-cyan-300">البريد الإلكتروني</label>
         <input type="email" id="login-email" placeholder="cyber@kalima.ai" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-cyan-500/30 focus:outline-none focus:border-cyan-400 text-white text-xs shadow-inner">
       </div>
       <div>
-        <label class="block text-[10px] uppercase font-bold mb-1 text-cyan-300">كلمة المرور</label>
+        <label data-i18n="labelPassword" class="block text-[10px] uppercase font-bold mb-1 text-cyan-300">كلمة المرور</label>
         <input type="password" id="login-password" placeholder="••••••••" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-cyan-500/30 focus:outline-none focus:border-cyan-400 text-white text-xs shadow-inner">
       </div>
-      <button type="submit" class="w-full cyber-btn-glow bg-gradient-to-r from-cyan-400 via-indigo-600 to-purple-600 text-black font-black py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition duration-300 text-xs uppercase tracking-wider">
+      <button type="submit" data-i18n="btnLogin" class="w-full cyber-btn-glow bg-gradient-to-r from-cyan-400 via-indigo-600 to-purple-600 text-black font-black py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition duration-300 text-xs uppercase tracking-wider">
         دخول لتطبيق كَلِمَة ⚡
       </button>
     </form>
 
     <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
       <div>
-        <label class="block text-[10px] uppercase font-bold mb-1 text-purple-300">الاسم المستعار</label>
+        <label data-i18n="labelNickname" class="block text-[10px] uppercase font-bold mb-1 text-purple-300">الاسم المستعار</label>
         <input type="text" id="reg-username" placeholder="مثال: Shefo" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner">
       </div>
       <div>
-        <label class="block text-[10px] uppercase font-bold mb-1 text-purple-300">البريد الإلكتروني</label>
+        <label data-i18n="labelEmail" class="block text-[10px] uppercase font-bold mb-1 text-purple-300">البريد الإلكتروني</label>
         <input type="email" id="reg-email" placeholder="cyber@kalima.ai" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner">
       </div>
       <div>
-        <label class="block text-[10px] uppercase font-bold mb-1 text-purple-300">كلمة المرور</label>
+        <label data-i18n="labelPassword" class="block text-[10px] uppercase font-bold mb-1 text-purple-300">كلمة المرور</label>
         <input type="password" id="reg-password" placeholder="••••••••" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner">
       </div>
-      <button type="submit" class="w-full cyber-btn-glow bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition duration-300 text-xs uppercase tracking-wider">
+
+      <!-- 🌐 اختيار لغة استخدام التطبيق (تحت كلمة المرور مباشرة) -->
+      <div>
+        <label data-i18n="labelLanguage" class="block text-[10px] uppercase font-bold mb-1 text-purple-300">اللغة</label>
+        <select id="reg-language" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner"></select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label data-i18n="labelDob" class="block text-[10px] uppercase font-bold mb-1 text-purple-300">تاريخ الميلاد</label>
+          <input type="date" id="reg-dob" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner [color-scheme:dark]">
+        </div>
+        <div>
+          <label data-i18n="labelGender" class="block text-[10px] uppercase font-bold mb-1 text-purple-300">الجنس</label>
+          <select id="reg-gender" required class="w-full p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs shadow-inner">
+            <option value="" disabled selected data-i18n="optChoose">اختر...</option>
+            <option value="male" data-i18n="optMale">ذكر</option>
+            <option value="female" data-i18n="optFemale">أنثى</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 📱 رقم الجوال + رمز الدولة الدولي (يتزامن تلقائياً مع اللغة المختارة، ويمكن تغييره يدوياً) -->
+      <div>
+        <label data-i18n="labelPhone" class="block text-[10px] uppercase font-bold mb-1 text-purple-300">رقم الجوال</label>
+        <div class="flex gap-2" dir="ltr">
+          <select id="reg-country-code" onchange="onCountryCodeManualChange()" class="w-[38%] p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-[11px] shadow-inner"></select>
+          <input type="tel" id="reg-phone" placeholder="5xxxxxxxx" dir="ltr" required class="flex-1 p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 focus:outline-none focus:border-purple-400 text-white text-xs text-left shadow-inner">
+        </div>
+        <p class="text-[9px] text-slate-500 mt-1" id="reg-phone-hint"></p>
+      </div>
+
+      <button type="submit" data-i18n="btnRegister" class="w-full cyber-btn-glow bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition duration-300 text-xs uppercase tracking-wider">
         إنشاء حساب في كَلِمَة 🧬
       </button>
     </form>
@@ -248,36 +302,36 @@
   <div id="step-main" class="hidden w-full max-w-md h-screen md:h-[720px] holo-panel rounded-none md:rounded-[35px] flex flex-col justify-between overflow-hidden relative z-20 shadow-2xl">
     
     <!-- القائمة الجانبية -->
-    <div id="sidebar-drawer" class="fixed inset-y-0 right-0 w-80 bg-slate-950/95 backdrop-blur-3xl -webkit-backdrop-blur-3xl border-l border-cyan-500/30 z-50 transform translate-x-full transition-transform duration-300 ease-in-out p-6 flex flex-col justify-between shadow-2xl">
+    <div id="sidebar-drawer" class="side-drawer fixed inset-y-0 w-80 bg-slate-950/95 backdrop-blur-3xl -webkit-backdrop-blur-3xl border-cyan-500/30 z-50 transition-transform duration-300 ease-in-out p-6 flex flex-col justify-between shadow-2xl">
       <div>
         <div class="flex justify-between items-center mb-8 pb-4 border-b border-cyan-500/20">
-          <span class="font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 text-base">قائمة كَلِمَة</span>
+          <span data-i18n="menuTitle" class="font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 text-base">قائمة كَلِمَة</span>
           <button onclick="toggleSidebar()" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
         </div>
         <div class="space-y-4">
           <button onclick="switchMainTab('chat'); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/60 to-indigo-950/60 border border-cyan-500/40 hover:border-cyan-400 flex items-center justify-between transition group">
             <div class="flex items-center gap-3">
               <i class="fa-solid fa-satellite-dish text-cyan-400 group-hover:rotate-45 transition duration-300"></i>
-              <span class="text-xs font-bold text-cyan-200">الدردشة الخاصة (DM)</span>
+              <span data-i18n="menuChat" class="text-xs font-bold text-cyan-200">الدردشة الخاصة (DM)</span>
             </div>
-            <span class="bg-cyan-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">مباشر</span>
+            <span data-i18n="menuLive" class="bg-cyan-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg">مباشر</span>
           </button>
 
           <button onclick="openEditProfileModal(); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500 flex items-center gap-3 transition">
             <i class="fa-solid fa-user-pen text-cyan-400"></i>
-            <span class="text-xs font-bold text-slate-300">تعديل الملف الشخصي</span>
+            <span data-i18n="menuEditProfile" class="text-xs font-bold text-slate-300">تعديل الملف الشخصي</span>
           </button>
 
           <button onclick="openSettingsModal(); toggleSidebar();" class="w-full text-right p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-purple-500 flex items-center gap-3 transition">
             <i class="fa-solid fa-gear text-purple-400"></i>
-            <span class="text-xs font-bold text-slate-300">إعدادات الحساب والخصوصية ⚙️</span>
+            <span data-i18n="menuSettings" class="text-xs font-bold text-slate-300">إعدادات الحساب والخصوصية ⚙️</span>
           </button>
         </div>
       </div>
 
       <button onclick="logout()" class="w-full p-3.5 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-black flex items-center justify-center gap-2 font-black transition text-xs">
         <i class="fa-solid fa-power-off"></i>
-        <span>تسجيل الخروج من كَلِمَة</span>
+        <span data-i18n="menuLogout">تسجيل الخروج من كَلِمَة</span>
       </button>
     </div>
 
@@ -550,11 +604,35 @@
           <span class="absolute right-3 top-2.5 text-xs text-slate-500">@</span>
           <input type="text" id="edit-username" placeholder="username" class="w-full pr-7 p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-purple-400 font-mono">
         </div>
+        <p id="username-lock-note" class="hidden text-[9px] text-amber-400/90 mt-1">🔒 لا يمكن تغيير اسم المستخدم بعد اعتماده نهائياً.</p>
       </div>
 
       <div>
         <label class="block text-[10px] font-bold text-slate-300 mb-1">النبذة عني</label>
         <textarea id="edit-bio" rows="3" placeholder="اكتب نبذة مميزة عنك وعن محتواك..." class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-400 resize-none"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] font-bold text-cyan-300 mb-1">تاريخ الميلاد</label>
+          <input type="date" id="edit-dob" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-400 [color-scheme:dark]">
+          <p id="dob-lock-note" class="hidden text-[9px] text-amber-400/90 mt-1">🔒 تم استخدام فرصة التعديل الوحيدة.</p>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-purple-300 mb-1">الجنس</label>
+          <select id="edit-gender" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-purple-400">
+            <option value="">اختر...</option>
+            <option value="male">ذكر</option>
+            <option value="female">أنثى</option>
+          </select>
+          <p id="gender-lock-note" class="hidden text-[9px] text-amber-400/90 mt-1">🔒 تم استخدام فرصة التعديل الوحيدة.</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-cyan-300 mb-1">رقم الجوال</label>
+        <input type="tel" id="edit-phone" placeholder="05xxxxxxxx" dir="ltr" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white text-left focus:outline-none focus:border-cyan-400">
+        <p id="phone-lock-note" class="hidden text-[9px] text-amber-400/90 mt-1">🔒 تم استخدام فرصة التعديل الوحيدة.</p>
       </div>
 
       <div class="pt-2 flex gap-2">
@@ -589,22 +667,30 @@
   <div id="modal-settings" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50">
     <div class="holo-panel p-6 rounded-3xl border border-purple-500/40 w-full max-w-sm space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar">
       <div class="flex justify-between items-center border-b border-purple-500/20 pb-2">
-        <h3 class="text-xs font-bold text-purple-400 flex items-center gap-2"><i class="fa-solid fa-sliders"></i> إعدادات الخصوصية والأمان</h3>
+        <h3 data-i18n="settingsTitle" class="text-xs font-bold text-purple-400 flex items-center gap-2"><i class="fa-solid fa-sliders"></i> إعدادات الخصوصية والأمان</h3>
         <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 flex justify-between items-center">
         <div>
-          <p class="text-xs font-bold text-white">خصوصية الحساب</p>
+          <p data-i18n="settingsLanguageLabel" class="text-xs font-bold text-white">لغة التطبيق</p>
+          <p class="text-[9px] text-slate-400">اختر اللغة المناسبة لك لاستخدام التطبيق</p>
+        </div>
+        <select id="setting-language" onchange="changeAppLanguage(this.value)" class="bg-slate-950 border border-cyan-500/40 text-cyan-300 text-xs rounded-xl p-2 focus:outline-none max-w-[130px]"></select>
+      </div>
+
+      <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 flex justify-between items-center">
+        <div>
+          <p data-i18n="settingsPrivacyLabel" class="text-xs font-bold text-white">خصوصية الحساب</p>
           <p class="text-[9px] text-slate-400" id="privacy-desc">عام (يمكن للجميع رؤية منشوراتك)</p>
         </div>
         <select id="setting-privacy" onchange="togglePrivacySetting()" class="bg-slate-950 border border-cyan-500/40 text-cyan-300 text-xs rounded-xl p-2 focus:outline-none">
-          <option value="public">عام (Public) 🌐</option>
-          <option value="private">خاص (Private) 🔒</option>
+          <option value="public" data-i18n="settingsPublic">عام (Public) 🌐</option>
+          <option value="private" data-i18n="settingsPrivate">خاص (Private) 🔒</option>
         </select>
       </div>
 
-      <button onclick="closeSettingsModal()" class="w-full py-2.5 rounded-2xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition mt-2">إغلاق</button>
+      <button onclick="closeSettingsModal()" data-i18n="btnClose" class="w-full py-2.5 rounded-2xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition mt-2">إغلاق</button>
     </div>
   </div>
 
@@ -669,6 +755,31 @@
     </div>
   </div>
 
+  <!-- نافذة عرض المنشور: تُفتح عند الضغط على أي منشور. من داخلها فقط يقدر
+       المستخدم يضغط لايك ويقرأ/يكتب التعليقات — القائمة الرئيسية لا تعرض
+       صناديق تعليقات مفتوحة بعد الآن حتى تبقى خفيفة. -->
+  <div id="modal-post-view" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center p-0 md:p-4 z-50">
+    <div class="holo-panel w-full max-w-md h-screen md:h-[720px] rounded-none md:rounded-[35px] flex flex-col overflow-hidden">
+      <div class="bg-slate-950/90 p-4 flex items-center justify-between border-b border-cyan-500/20 backdrop-blur-md shrink-0">
+        <div class="flex items-center gap-3">
+          <button onclick="closePostView()" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-arrow-right"></i></button>
+          <span class="text-xs font-bold text-white">المنشور</span>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+        <div id="post-view-body"></div>
+        <div class="border-t border-slate-900 pt-3">
+          <p data-i18n="postComments" class="text-[10px] font-bold text-cyan-300 mb-2">التعليقات</p>
+          <div id="post-view-comments-list" class="space-y-2 text-[11px]"></div>
+        </div>
+      </div>
+      <div class="p-3 border-t border-slate-800 flex gap-2 items-center bg-slate-950/80 shrink-0">
+        <input type="text" id="post-view-comment-input" placeholder="اكتب تعليقاً للمتابعين..." onkeydown="if(event.key==='Enter') addComment(activePostViewId);" class="flex-1 bg-slate-900 p-3 rounded-2xl border border-slate-800 text-xs text-white focus:outline-none focus:border-cyan-400">
+        <button onclick="addComment(activePostViewId)" class="bg-cyan-500 text-black w-10 h-10 rounded-2xl font-black flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane"></i></button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ============================================================
     // 🔥 إعداد Firebase
@@ -710,7 +821,15 @@
     let notificationsListenerUnsubscribe = null;
     let lastHandledNotificationTime = Date.now();
 
-    let livePostsUnsubscribe = null;
+    // 🔧 إصلاح جوهري: كانت الصفحة الرئيسية تجلب فقط المنشورات العامة (isPrivate == false)
+    // بلا أي استثناء — وبما أن كل منشور يرث حالة الخصوصية من إعدادات صاحبه وقت النشر،
+    // فإن أي مستخدم حسابه "خاص" لا يرى منشوراته هو نفسه أبداً في صفحته الرئيسية!
+    // الحل: نستمع لاستعلامين منفصلين وندمج نتائجهما — كل المنشورات العامة + كل منشوراتي
+    // أنا شخصياً (بصرف النظر عن خصوصيتها) — راجع renderLiveFeed أدناه.
+    let livePostsPublicUnsubscribe = null;
+    let livePostsOwnUnsubscribe = null;
+    let livePostsPublicMap = new Map();
+    let livePostsOwnMap = new Map();
     let activeCommentsUnsubscribe = {};
     let currentMediaObjectUrl = null;
 
@@ -723,6 +842,215 @@
     // ذاكرة تخزين مؤقت عامة لبيانات المستخدمين (تُستخدم لقائمة المحادثات وقائمة
     // المتابعين/المتابَعين)، لتفادي إعادة جلب نفس البروفايل من Firestore بلا داعٍ
     const userProfileCache = new Map();
+
+    // ============================================================
+    // 🌐 نظام تعدد اللغات (i18n) — لغات العالم
+    // ============================================================
+    // كل لغة: الرمز، الاسم بلغتها، اتجاه الكتابة، ودولة الجوال الافتراضية (للمزامنة مع رمز الدولة)
+    const LANGUAGES = [
+      { code: 'ar', name: '🇸🇦 العربية',      dir: 'rtl', defaultCountry: 'SA' },
+      { code: 'en', name: '🇺🇸 English',       dir: 'ltr', defaultCountry: 'US' },
+      { code: 'fr', name: '🇫🇷 Français',      dir: 'ltr', defaultCountry: 'FR' },
+      { code: 'es', name: '🇪🇸 Español',       dir: 'ltr', defaultCountry: 'ES' },
+      { code: 'pt', name: '🇧🇷 Português',     dir: 'ltr', defaultCountry: 'BR' },
+      { code: 'de', name: '🇩🇪 Deutsch',       dir: 'ltr', defaultCountry: 'DE' },
+      { code: 'it', name: '🇮🇹 Italiano',      dir: 'ltr', defaultCountry: 'IT' },
+      { code: 'ru', name: '🇷🇺 Русский',       dir: 'ltr', defaultCountry: 'RU' },
+      { code: 'tr', name: '🇹🇷 Türkçe',        dir: 'ltr', defaultCountry: 'TR' },
+      { code: 'ur', name: '🇵🇰 اردو',          dir: 'rtl', defaultCountry: 'PK' },
+      { code: 'fa', name: '🇮🇷 فارسی',         dir: 'rtl', defaultCountry: 'IR' },
+      { code: 'hi', name: '🇮🇳 हिन्दी',         dir: 'ltr', defaultCountry: 'IN' },
+      { code: 'id', name: '🇮🇩 Bahasa Indonesia', dir: 'ltr', defaultCountry: 'ID' },
+      { code: 'zh', name: '🇨🇳 中文',          dir: 'ltr', defaultCountry: 'CN' },
+      { code: 'ja', name: '🇯🇵 日本語',        dir: 'ltr', defaultCountry: 'JP' },
+      { code: 'ko', name: '🇰🇷 한국어',        dir: 'ltr', defaultCountry: 'KR' }
+    ];
+
+    const TRANSLATIONS = {
+      ar: { appTagline:'الجيل القادم من التواصل الهولوجرامي 🌌', tabLogin:'تسجيل الدخول', tabRegister:'هوية جديدة', labelEmail:'البريد الإلكتروني', labelPassword:'كلمة المرور', btnLogin:'دخول لتطبيق كَلِمَة ⚡', labelNickname:'الاسم المستعار', labelLanguage:'اللغة', labelDob:'تاريخ الميلاد', labelGender:'الجنس', optChoose:'اختر...', optMale:'ذكر', optFemale:'أنثى', labelPhone:'رقم الجوال', btnRegister:'إنشاء حساب في كَلِمَة 🧬', menuTitle:'قائمة كَلِمَة', menuChat:'الدردشة الخاصة (DM)', menuLive:'مباشر', menuEditProfile:'تعديل الملف الشخصي', menuSettings:'إعدادات الحساب والخصوصية ⚙️', menuLogout:'تسجيل الخروج من كَلِمَة', settingsTitle:'إعدادات الخصوصية والأمان', settingsLanguageLabel:'لغة التطبيق', settingsPrivacyLabel:'خصوصية الحساب', settingsPublic:'عام (Public) 🌐', settingsPrivate:'خاص (Private) 🔒', btnClose:'إغلاق', postComments:'التعليقات', postCommentPlaceholder:'اكتب تعليقاً للمتابعين...', postNoComments:'لا توجد تعليقات بعد.. كن أول المعلقين!', postLoadingComments:'جاري تحميل التعليقات...', postEdit:'تعديل المنشور', postDelete:'حذف المنشور', postNoPostsYet:'لا توجد منشورات حالياً.. كن أول من ينشر!', postNoPostsYetProfile:'لا توجد منشورات هنا بعد!', postLikedByCount:'أعجب به {n} شخص', chatStartNow:'ابدأ المحادثة الآن، أرسل أول رسالة! 💬', chatNoChatsYet:'لا توجد محادثات بعد.. ابحث عن صديق وابدأ الدردشة!', chatApproveFirst:'وافق أولاً لعرض محتوى الرسالة 🔒', notifNoneYet:'لا توجد تفاعلات أو إشعارات جديدة', friendReqNone:'لا توجد طلبات صداقة حالياً.', msgReqNone:'لا توجد طلبات رسائل حالياً.', searchNoResults:'لا توجد نتائج مطابقة.', exploreNoMedia:'لا توجد صور أو مقاطع عامة حالياً.' },
+      en: { appTagline:'The next generation of holographic connection 🌌', tabLogin:'Sign In', tabRegister:'New Identity', labelEmail:'Email', labelPassword:'Password', btnLogin:'Enter KALIMA ⚡', labelNickname:'Nickname', labelLanguage:'Language', labelDob:'Date of Birth', labelGender:'Gender', optChoose:'Choose...', optMale:'Male', optFemale:'Female', labelPhone:'Phone Number', btnRegister:'Create KALIMA Account 🧬', menuTitle:'KALIMA Menu', menuChat:'Private Chat (DM)', menuLive:'Live', menuEditProfile:'Edit Profile', menuSettings:'Account & Privacy Settings ⚙️', menuLogout:'Log Out of KALIMA', settingsTitle:'Privacy & Security Settings', settingsLanguageLabel:'App Language', settingsPrivacyLabel:'Account Privacy', settingsPublic:'Public 🌐', settingsPrivate:'Private 🔒', btnClose:'Close', postComments:'Comments', postCommentPlaceholder:'Write a comment for your followers...', postNoComments:'No comments yet.. be the first!', postLoadingComments:'Loading comments...', postEdit:'Edit post', postDelete:'Delete post', postNoPostsYet:'No posts yet.. be the first to post!', postNoPostsYetProfile:'No posts here yet!', postLikedByCount:'Liked by {n} people', chatStartNow:'Start the conversation now, send your first message! 💬', chatNoChatsYet:'No chats yet.. find a friend and start chatting!', chatApproveFirst:'Accept first to view the message content 🔒', notifNoneYet:'No new interactions or notifications', friendReqNone:'No friend requests currently.', msgReqNone:'No message requests currently.', searchNoResults:'No matching results.', exploreNoMedia:'No public photos or videos currently.' },
+      fr: { appTagline:'La nouvelle génération de connexion holographique 🌌', tabLogin:'Connexion', tabRegister:'Nouvelle identité', labelEmail:'E-mail', labelPassword:'Mot de passe', btnLogin:'Entrer sur KALIMA ⚡', labelNickname:'Pseudonyme', labelLanguage:'Langue', labelDob:'Date de naissance', labelGender:'Genre', optChoose:'Choisir...', optMale:'Homme', optFemale:'Femme', labelPhone:'Numéro de téléphone', btnRegister:'Créer un compte KALIMA 🧬', menuTitle:'Menu KALIMA', menuChat:'Chat privé (DM)', menuLive:'En direct', menuEditProfile:'Modifier le profil', menuSettings:'Paramètres du compte ⚙️', menuLogout:'Se déconnecter', settingsTitle:'Confidentialité et sécurité', settingsLanguageLabel:"Langue de l'application", settingsPrivacyLabel:'Confidentialité du compte', settingsPublic:'Public 🌐', settingsPrivate:'Privé 🔒', btnClose:'Fermer', postComments:'Commentaires', postCommentPlaceholder:'Ecrivez un commentaire pour vos abonnes...', postNoComments:'Pas encore de commentaires.. soyez le premier !', postLoadingComments:'Chargement des commentaires...', postEdit:'Modifier la publication', postDelete:'Supprimer la publication', postNoPostsYet:'Aucune publication pour le moment.. soyez le premier a publier !', postNoPostsYetProfile:'Aucune publication ici pour le moment !', postLikedByCount:'Aime par {n} personnes', chatStartNow:'Demarrez la conversation, envoyez votre premier message ! 💬', chatNoChatsYet:'Aucune conversation pour le moment.. trouvez un ami et discutez !', chatApproveFirst:'Acceptez d\'abord pour voir le contenu du message 🔒', notifNoneYet:'Aucune nouvelle interaction ou notification', friendReqNone:'Aucune demande d\'ami actuellement.', msgReqNone:'Aucune demande de message actuellement.', searchNoResults:'Aucun resultat correspondant.', exploreNoMedia:'Aucune photo ou video publique pour l\'instant.' },
+      es: { appTagline:'La nueva generación de conexión holográfica 🌌', tabLogin:'Iniciar sesión', tabRegister:'Nueva identidad', labelEmail:'Correo electrónico', labelPassword:'Contraseña', btnLogin:'Entrar a KALIMA ⚡', labelNickname:'Apodo', labelLanguage:'Idioma', labelDob:'Fecha de nacimiento', labelGender:'Género', optChoose:'Elegir...', optMale:'Hombre', optFemale:'Mujer', labelPhone:'Número de teléfono', btnRegister:'Crear cuenta en KALIMA 🧬', menuTitle:'Menú de KALIMA', menuChat:'Chat privado (DM)', menuLive:'En vivo', menuEditProfile:'Editar perfil', menuSettings:'Ajustes de cuenta y privacidad ⚙️', menuLogout:'Cerrar sesión', settingsTitle:'Privacidad y seguridad', settingsLanguageLabel:'Idioma de la app', settingsPrivacyLabel:'Privacidad de la cuenta', settingsPublic:'Público 🌐', settingsPrivate:'Privado 🔒', btnClose:'Cerrar', postComments:'Comentarios', postCommentPlaceholder:'Escribe un comentario para tus seguidores...', postNoComments:'Aun no hay comentarios.. se el primero!', postLoadingComments:'Cargando comentarios...', postEdit:'Editar publicacion', postDelete:'Eliminar publicacion', postNoPostsYet:'No hay publicaciones aun.. se el primero en publicar!', postNoPostsYetProfile:'Aun no hay publicaciones aqui!', postLikedByCount:'Le gusta a {n} personas', chatStartNow:'Inicia la conversacion, envia tu primer mensaje! 💬', chatNoChatsYet:'Aun no hay chats.. busca un amigo y empieza a chatear!', chatApproveFirst:'Acepta primero para ver el contenido del mensaje 🔒', notifNoneYet:'No hay interacciones ni notificaciones nuevas', friendReqNone:'No hay solicitudes de amistad actualmente.', msgReqNone:'No hay solicitudes de mensaje actualmente.', searchNoResults:'No hay resultados coincidentes.', exploreNoMedia:'No hay fotos o videos publicos actualmente.' },
+      pt: { appTagline:'A nova geração de conexão holográfica 🌌', tabLogin:'Entrar', tabRegister:'Nova identidade', labelEmail:'E-mail', labelPassword:'Senha', btnLogin:'Entrar no KALIMA ⚡', labelNickname:'Apelido', labelLanguage:'Idioma', labelDob:'Data de nascimento', labelGender:'Gênero', optChoose:'Escolher...', optMale:'Masculino', optFemale:'Feminino', labelPhone:'Número de telefone', btnRegister:'Criar conta no KALIMA 🧬', menuTitle:'Menu KALIMA', menuChat:'Chat privado (DM)', menuLive:'Ao vivo', menuEditProfile:'Editar perfil', menuSettings:'Configurações da conta ⚙️', menuLogout:'Sair do KALIMA', settingsTitle:'Privacidade e segurança', settingsLanguageLabel:'Idioma do app', settingsPrivacyLabel:'Privacidade da conta', settingsPublic:'Público 🌐', settingsPrivate:'Privado 🔒', btnClose:'Fechar', postComments:'Comentarios', postCommentPlaceholder:'Escreva um comentario para seus seguidores...', postNoComments:'Ainda nao ha comentarios.. seja o primeiro!', postLoadingComments:'Carregando comentarios...', postEdit:'Editar publicacao', postDelete:'Excluir publicacao', postNoPostsYet:'Nenhuma publicacao ainda.. seja o primeiro a publicar!', postNoPostsYetProfile:'Nenhuma publicacao aqui ainda!', postLikedByCount:'Curtido por {n} pessoas', chatStartNow:'Inicie a conversa agora, envie sua primeira mensagem! 💬', chatNoChatsYet:'Nenhuma conversa ainda.. encontre um amigo e comece a conversar!', chatApproveFirst:'Aceite primeiro para ver o conteudo da mensagem 🔒', notifNoneYet:'Nenhuma interacao ou notificacao nova', friendReqNone:'Nenhuma solicitacao de amizade no momento.', msgReqNone:'Nenhuma solicitacao de mensagem no momento.', searchNoResults:'Nenhum resultado correspondente.', exploreNoMedia:'Nenhuma foto ou video publico no momento.' },
+      de: { appTagline:'Die nächste Generation holografischer Verbindung 🌌', tabLogin:'Anmelden', tabRegister:'Neue Identität', labelEmail:'E-Mail', labelPassword:'Passwort', btnLogin:'Bei KALIMA anmelden ⚡', labelNickname:'Spitzname', labelLanguage:'Sprache', labelDob:'Geburtsdatum', labelGender:'Geschlecht', optChoose:'Wählen...', optMale:'Männlich', optFemale:'Weiblich', labelPhone:'Telefonnummer', btnRegister:'KALIMA-Konto erstellen 🧬', menuTitle:'KALIMA-Menü', menuChat:'Privater Chat (DM)', menuLive:'Live', menuEditProfile:'Profil bearbeiten', menuSettings:'Konto- und Datenschutzeinstellungen ⚙️', menuLogout:'Von KALIMA abmelden', settingsTitle:'Datenschutz & Sicherheit', settingsLanguageLabel:'App-Sprache', settingsPrivacyLabel:'Kontoprivatsphäre', settingsPublic:'Öffentlich 🌐', settingsPrivate:'Privat 🔒', btnClose:'Schließen', postComments:'Kommentare', postCommentPlaceholder:'Schreibe einen Kommentar fuer deine Follower...', postNoComments:'Noch keine Kommentare.. sei der Erste!', postLoadingComments:'Kommentare werden geladen...', postEdit:'Beitrag bearbeiten', postDelete:'Beitrag loeschen', postNoPostsYet:'Noch keine Beitraege.. sei der Erste, der postet!', postNoPostsYetProfile:'Hier noch keine Beitraege!', postLikedByCount:'Gefaellt {n} Personen', chatStartNow:'Starte jetzt das Gespraech, sende deine erste Nachricht! 💬', chatNoChatsYet:'Noch keine Chats.. finde einen Freund und beginne zu chatten!', chatApproveFirst:'Zuerst annehmen, um den Nachrichteninhalt zu sehen 🔒', notifNoneYet:'Keine neuen Interaktionen oder Benachrichtigungen', friendReqNone:'Derzeit keine Freundschaftsanfragen.', msgReqNone:'Derzeit keine Nachrichtenanfragen.', searchNoResults:'Keine passenden Ergebnisse.', exploreNoMedia:'Derzeit keine oeffentlichen Fotos oder Videos.' },
+      it: { appTagline:'La nuova generazione di connessione olografica 🌌', tabLogin:'Accedi', tabRegister:'Nuova identità', labelEmail:'Email', labelPassword:'Password', btnLogin:'Entra in KALIMA ⚡', labelNickname:'Soprannome', labelLanguage:'Lingua', labelDob:'Data di nascita', labelGender:'Genere', optChoose:'Scegli...', optMale:'Maschio', optFemale:'Femmina', labelPhone:'Numero di telefono', btnRegister:'Crea account KALIMA 🧬', menuTitle:'Menu KALIMA', menuChat:'Chat privata (DM)', menuLive:'Live', menuEditProfile:'Modifica profilo', menuSettings:'Impostazioni account e privacy ⚙️', menuLogout:'Esci da KALIMA', settingsTitle:'Privacy e sicurezza', settingsLanguageLabel:"Lingua dell'app", settingsPrivacyLabel:'Privacy account', settingsPublic:'Pubblico 🌐', settingsPrivate:'Privato 🔒', btnClose:'Chiudi', postComments:'Commenti', postCommentPlaceholder:'Scrivi un commento per i tuoi follower...', postNoComments:'Ancora nessun commento.. sii il primo!', postLoadingComments:'Caricamento commenti...', postEdit:'Modifica post', postDelete:'Elimina post', postNoPostsYet:'Ancora nessun post.. sii il primo a pubblicare!', postNoPostsYetProfile:'Ancora nessun post qui!', postLikedByCount:'Piace a {n} persone', chatStartNow:'Inizia la conversazione ora, invia il tuo primo messaggio! 💬', chatNoChatsYet:'Ancora nessuna chat.. trova un amico e inizia a chattare!', chatApproveFirst:'Accetta prima per vedere il contenuto del messaggio 🔒', notifNoneYet:'Nessuna nuova interazione o notifica', friendReqNone:'Nessuna richiesta di amicizia al momento.', msgReqNone:'Nessuna richiesta di messaggio al momento.', searchNoResults:'Nessun risultato corrispondente.', exploreNoMedia:'Nessuna foto o video pubblico al momento.' },
+      ru: { appTagline:'Новое поколение голографического общения 🌌', tabLogin:'Вход', tabRegister:'Новый профиль', labelEmail:'Эл. почта', labelPassword:'Пароль', btnLogin:'Войти в KALIMA ⚡', labelNickname:'Псевдоним', labelLanguage:'Язык', labelDob:'Дата рождения', labelGender:'Пол', optChoose:'Выбрать...', optMale:'Мужской', optFemale:'Женский', labelPhone:'Номер телефона', btnRegister:'Создать аккаунт KALIMA 🧬', menuTitle:'Меню KALIMA', menuChat:'Личные сообщения (DM)', menuLive:'Прямой эфир', menuEditProfile:'Редактировать профиль', menuSettings:'Настройки аккаунта и конфиденциальности ⚙️', menuLogout:'Выйти из KALIMA', settingsTitle:'Конфиденциальность и безопасность', settingsLanguageLabel:'Язык приложения', settingsPrivacyLabel:'Конфиденциальность аккаунта', settingsPublic:'Публичный 🌐', settingsPrivate:'Приватный 🔒', btnClose:'Закрыть', postComments:'Комментарии', postCommentPlaceholder:'Напишите комментарий для подписчиков...', postNoComments:'Пока нет комментариев.. будьте первым!', postLoadingComments:'Загрузка комментариев...', postEdit:'Редактировать пост', postDelete:'Удалить пост', postNoPostsYet:'Пока нет публикаций.. станьте первым!', postNoPostsYetProfile:'Здесь пока нет публикаций!', postLikedByCount:'Нравится {n} людям', chatStartNow:'Начните беседу прямо сейчас, отправьте первое сообщение! 💬', chatNoChatsYet:'Пока нет чатов.. найдите друга и начните переписку!', chatApproveFirst:'Сначала примите, чтобы увидеть содержимое сообщения 🔒', notifNoneYet:'Нет новых взаимодействий или уведомлений', friendReqNone:'Сейчас нет заявок в друзья.', msgReqNone:'Сейчас нет запросов на сообщения.', searchNoResults:'Совпадений не найдено.', exploreNoMedia:'Пока нет публичных фото или видео.' },
+      tr: { appTagline:'Holografik iletişimin yeni nesli 🌌', tabLogin:'Giriş Yap', tabRegister:'Yeni Kimlik', labelEmail:'E-posta', labelPassword:'Şifre', btnLogin:'KALIMA’ya Gir ⚡', labelNickname:'Takma Ad', labelLanguage:'Dil', labelDob:'Doğum Tarihi', labelGender:'Cinsiyet', optChoose:'Seçiniz...', optMale:'Erkek', optFemale:'Kadın', labelPhone:'Telefon Numarası', btnRegister:'KALIMA Hesabı Oluştur 🧬', menuTitle:'KALIMA Menüsü', menuChat:'Özel Sohbet (DM)', menuLive:'Canlı', menuEditProfile:'Profili Düzenle', menuSettings:'Hesap ve Gizlilik Ayarları ⚙️', menuLogout:'KALIMA’dan Çıkış Yap', settingsTitle:'Gizlilik ve Güvenlik', settingsLanguageLabel:'Uygulama Dili', settingsPrivacyLabel:'Hesap Gizliliği', settingsPublic:'Herkese Açık 🌐', settingsPrivate:'Gizli 🔒', btnClose:'Kapat', postComments:'Yorumlar', postCommentPlaceholder:'Takipcilerin icin bir yorum yaz...', postNoComments:'Henuz yorum yok.. ilk sen ol!', postLoadingComments:'Yorumlar yukleniyor...', postEdit:'Gonderiyi duzenle', postDelete:'Gonderiyi sil', postNoPostsYet:'Henuz gonderi yok.. ilk paylasan sen ol!', postNoPostsYetProfile:'Burada henuz gonderi yok!', postLikedByCount:'{n} kisi begendi', chatStartNow:'Simdi sohbete basla, ilk mesajini gonder! 💬', chatNoChatsYet:'Henuz sohbet yok.. bir arkadas bul ve sohbete basla!', chatApproveFirst:'Mesaj icerigini gormek icin once kabul et 🔒', notifNoneYet:'Yeni etkilesim veya bildirim yok', friendReqNone:'Su anda arkadaslik istegi yok.', msgReqNone:'Su anda mesaj istegi yok.', searchNoResults:'Eslesen sonuc yok.', exploreNoMedia:'Su anda genel fotograf veya video yok.' },
+      ur: { appTagline:'ہولوگرافک رابطے کی نئی نسل 🌌', tabLogin:'لاگ ان', tabRegister:'نئی شناخت', labelEmail:'ای میل', labelPassword:'پاس ورڈ', btnLogin:'کَلِمَۃ میں داخل ہوں ⚡', labelNickname:'عرفیت', labelLanguage:'زبان', labelDob:'تاریخ پیدائش', labelGender:'جنس', optChoose:'منتخب کریں...', optMale:'مرد', optFemale:'عورت', labelPhone:'موبائل نمبر', btnRegister:'کَلِمَۃ اکاؤنٹ بنائیں 🧬', menuTitle:'کَلِمَۃ مینو', menuChat:'نجی چیٹ (DM)', menuLive:'لائیو', menuEditProfile:'پروفائل میں ترمیم کریں', menuSettings:'اکاؤنٹ اور رازداری کی ترتیبات ⚙️', menuLogout:'لاگ آؤٹ', settingsTitle:'رازداری اور تحفظ', settingsLanguageLabel:'ایپ کی زبان', settingsPrivacyLabel:'اکاؤنٹ کی رازداری', settingsPublic:'عوامی 🌐', settingsPrivate:'نجی 🔒', btnClose:'بند کریں', postComments:'تبصرے', postCommentPlaceholder:'اپنے فالورز کے لیے تبصرہ لکھیں...', postNoComments:'ابھی تک کوئی تبصرہ نہیں.. پہلے آپ بنیں!', postLoadingComments:'تبصرے لوڈ ہو رہے ہیں...', postEdit:'پوسٹ میں ترمیم کریں', postDelete:'پوسٹ حذف کریں', postNoPostsYet:'ابھی کوئی پوسٹ نہیں.. پہلی پوسٹ آپ کریں!', postNoPostsYetProfile:'یہاں ابھی تک کوئی پوسٹ نہیں!', postLikedByCount:'{n} افراد نے پسند کیا', chatStartNow:'ابھی گفتگو شروع کریں، اپنا پہلا پیغام بھیجیں! 💬', chatNoChatsYet:'ابھی تک کوئی چیٹ نہیں.. دوست تلاش کریں اور بات چیت شروع کریں!', chatApproveFirst:'پیغام کا مواد دیکھنے کے لیے پہلے قبول کریں 🔒', notifNoneYet:'کوئی نئی سرگرمی یا اطلاع نہیں', friendReqNone:'فی الحال کوئی دوستی کی درخواست نہیں۔', msgReqNone:'فی الحال کوئی پیغام کی درخواست نہیں۔', searchNoResults:'کوئی مماثل نتیجہ نہیں۔', exploreNoMedia:'فی الحال کوئی عوامی تصویر یا ویڈیو نہیں۔' },
+      fa: { appTagline:'نسل جدید ارتباط هولوگرافیک 🌌', tabLogin:'ورود', tabRegister:'هویت جدید', labelEmail:'ایمیل', labelPassword:'رمز عبور', btnLogin:'ورود به کَلِمَة ⚡', labelNickname:'نام مستعار', labelLanguage:'زبان', labelDob:'تاریخ تولد', labelGender:'جنسیت', optChoose:'انتخاب کنید...', optMale:'مرد', optFemale:'زن', labelPhone:'شماره موبایل', btnRegister:'ایجاد حساب کَلِمَة 🧬', menuTitle:'منوی کَلِمَة', menuChat:'چت خصوصی (DM)', menuLive:'زنده', menuEditProfile:'ویرایش پروفایل', menuSettings:'تنظیمات حساب و حریم خصوصی ⚙️', menuLogout:'خروج از کَلِمَة', settingsTitle:'حریم خصوصی و امنیت', settingsLanguageLabel:'زبان برنامه', settingsPrivacyLabel:'حریم خصوصی حساب', settingsPublic:'عمومی 🌐', settingsPrivate:'خصوصی 🔒', btnClose:'بستن', postComments:'نظرات', postCommentPlaceholder:'برای دنبال‌کنندگانتان نظری بنویسید...', postNoComments:'هنوز نظری ثبت نشده.. اولین نفر باشید!', postLoadingComments:'در حال بارگذاری نظرات...', postEdit:'ویرایش پست', postDelete:'حذف پست', postNoPostsYet:'هنوز پستی وجود ندارد.. اولین نفر باشید!', postNoPostsYetProfile:'هنوز پستی اینجا نیست!', postLikedByCount:'مورد پسند {n} نفر', chatStartNow:'همین حالا گفتگو را شروع کنید، اولین پیام را بفرستید! 💬', chatNoChatsYet:'هنوز گفتگویی نیست.. دوستی پیدا کنید و چت را شروع کنید!', chatApproveFirst:'برای دیدن محتوای پیام ابتدا بپذیرید 🔒', notifNoneYet:'هیچ تعامل یا اعلان جدیدی نیست', friendReqNone:'در حال حاضر درخواست دوستی‌ای نیست.', msgReqNone:'در حال حاضر درخواست پیامی نیست.', searchNoResults:'نتیجه‌ای مطابق یافت نشد.', exploreNoMedia:'در حال حاضر عکس یا ویدیوی عمومی‌ای نیست.' },
+      hi: { appTagline:'होलोग्राफिक संचार की अगली पीढ़ी 🌌', tabLogin:'लॉग इन', tabRegister:'नई पहचान', labelEmail:'ईमेल', labelPassword:'पासवर्ड', btnLogin:'KALIMA में प्रवेश करें ⚡', labelNickname:'उपनाम', labelLanguage:'भाषा', labelDob:'जन्म तिथि', labelGender:'लिंग', optChoose:'चुनें...', optMale:'पुरुष', optFemale:'महिला', labelPhone:'फ़ोन नंबर', btnRegister:'KALIMA खाता बनाएं 🧬', menuTitle:'KALIMA मेनू', menuChat:'निजी चैट (DM)', menuLive:'लाइव', menuEditProfile:'प्रोफ़ाइल संपादित करें', menuSettings:'खाता और गोपनीयता सेटिंग्स ⚙️', menuLogout:'लॉग आउट करें', settingsTitle:'गोपनीयता और सुरक्षा', settingsLanguageLabel:'ऐप की भाषा', settingsPrivacyLabel:'खाता गोपनीयता', settingsPublic:'सार्वजनिक 🌐', settingsPrivate:'निजी 🔒', btnClose:'बंद करें', postComments:'टिप्पणियाँ', postCommentPlaceholder:'अपने फॉलोअर्स के लिए टिप्पणी लिखें...', postNoComments:'अभी तक कोई टिप्पणी नहीं.. पहले आप बनें!', postLoadingComments:'टिप्पणियाँ लोड हो रही हैं...', postEdit:'पोस्ट संपादित करें', postDelete:'पोस्ट हटाएं', postNoPostsYet:'अभी तक कोई पोस्ट नहीं.. पहली पोस्ट आप करें!', postNoPostsYetProfile:'यहाँ अभी तक कोई पोस्ट नहीं है!', postLikedByCount:'{n} लोगों को पसंद आया', chatStartNow:'अभी बातचीत शुरू करें, अपना पहला संदेश भेजें! 💬', chatNoChatsYet:'अभी तक कोई चैट नहीं.. एक दोस्त खोजें और बातचीत शुरू करें!', chatApproveFirst:'संदेश की सामग्री देखने के लिए पहले स्वीकार करें 🔒', notifNoneYet:'कोई नई गतिविधि या सूचना नहीं', friendReqNone:'फ़िलहाल कोई मित्र अनुरोध नहीं है।', msgReqNone:'फ़िलहाल कोई संदेश अनुरोध नहीं है।', searchNoResults:'कोई मेल खाता परिणाम नहीं।', exploreNoMedia:'फ़िलहाल कोई सार्वजनिक फोटो या वीडियो नहीं।' },
+      id: { appTagline:'Generasi baru koneksi holografik 🌌', tabLogin:'Masuk', tabRegister:'Identitas Baru', labelEmail:'Email', labelPassword:'Kata Sandi', btnLogin:'Masuk ke KALIMA ⚡', labelNickname:'Nama Panggilan', labelLanguage:'Bahasa', labelDob:'Tanggal Lahir', labelGender:'Jenis Kelamin', optChoose:'Pilih...', optMale:'Pria', optFemale:'Wanita', labelPhone:'Nomor Telepon', btnRegister:'Buat Akun KALIMA 🧬', menuTitle:'Menu KALIMA', menuChat:'Obrolan Pribadi (DM)', menuLive:'Langsung', menuEditProfile:'Edit Profil', menuSettings:'Pengaturan Akun & Privasi ⚙️', menuLogout:'Keluar dari KALIMA', settingsTitle:'Privasi & Keamanan', settingsLanguageLabel:'Bahasa Aplikasi', settingsPrivacyLabel:'Privasi Akun', settingsPublic:'Publik 🌐', settingsPrivate:'Privat 🔒', btnClose:'Tutup', postComments:'Komentar', postCommentPlaceholder:'Tulis komentar untuk pengikut Anda...', postNoComments:'Belum ada komentar.. jadilah yang pertama!', postLoadingComments:'Memuat komentar...', postEdit:'Edit postingan', postDelete:'Hapus postingan', postNoPostsYet:'Belum ada postingan.. jadilah yang pertama memposting!', postNoPostsYetProfile:'Belum ada postingan di sini!', postLikedByCount:'Disukai oleh {n} orang', chatStartNow:'Mulai percakapan sekarang, kirim pesan pertama Anda! 💬', chatNoChatsYet:'Belum ada obrolan.. cari teman dan mulai mengobrol!', chatApproveFirst:'Terima dulu untuk melihat isi pesan 🔒', notifNoneYet:'Tidak ada interaksi atau notifikasi baru', friendReqNone:'Saat ini tidak ada permintaan pertemanan.', msgReqNone:'Saat ini tidak ada permintaan pesan.', searchNoResults:'Tidak ada hasil yang cocok.', exploreNoMedia:'Saat ini tidak ada foto atau video publik.' },
+      zh: { appTagline:'全息通讯的新一代 🌌', tabLogin:'登录', tabRegister:'新建身份', labelEmail:'电子邮箱', labelPassword:'密码', btnLogin:'进入 KALIMA ⚡', labelNickname:'昵称', labelLanguage:'语言', labelDob:'出生日期', labelGender:'性别', optChoose:'请选择...', optMale:'男', optFemale:'女', labelPhone:'手机号码', btnRegister:'创建 KALIMA 账户 🧬', menuTitle:'KALIMA 菜单', menuChat:'私信 (DM)', menuLive:'直播', menuEditProfile:'编辑个人资料', menuSettings:'账户与隐私设置 ⚙️', menuLogout:'退出 KALIMA', settingsTitle:'隐私与安全设置', settingsLanguageLabel:'应用语言', settingsPrivacyLabel:'账户隐私', settingsPublic:'公开 🌐', settingsPrivate:'私密 🔒', btnClose:'关闭', postComments:'评论', postCommentPlaceholder:'为你的粉丝写条评论...', postNoComments:'暂无评论，快来抢沙发！', postLoadingComments:'正在加载评论...', postEdit:'编辑帖子', postDelete:'删除帖子', postNoPostsYet:'暂无帖子，快来发布第一条吧！', postNoPostsYetProfile:'这里还没有帖子！', postLikedByCount:'{n} 人觉得赞', chatStartNow:'现在开始对话，发送你的第一条消息吧！💬', chatNoChatsYet:'暂无聊天记录，快去找朋友聊天吧！', chatApproveFirst:'请先接受才能查看消息内容 🔒', notifNoneYet:'暂无新的互动或通知', friendReqNone:'目前没有好友请求。', msgReqNone:'目前没有消息请求。', searchNoResults:'没有匹配的结果。', exploreNoMedia:'目前没有公开的照片或视频。' },
+      ja: { appTagline:'ホログラフィック通信の新世代 🌌', tabLogin:'ログイン', tabRegister:'新規登録', labelEmail:'メールアドレス', labelPassword:'パスワード', btnLogin:'KALIMAに入る ⚡', labelNickname:'ニックネーム', labelLanguage:'言語', labelDob:'生年月日', labelGender:'性別', optChoose:'選択してください...', optMale:'男性', optFemale:'女性', labelPhone:'電話番号', btnRegister:'KALIMAアカウントを作成 🧬', menuTitle:'KALIMAメニュー', menuChat:'プライベートチャット (DM)', menuLive:'ライブ', menuEditProfile:'プロフィールを編集', menuSettings:'アカウントとプライバシー設定 ⚙️', menuLogout:'ログアウト', settingsTitle:'プライバシーとセキュリティ', settingsLanguageLabel:'アプリの言語', settingsPrivacyLabel:'アカウントの公開設定', settingsPublic:'公開 🌐', settingsPrivate:'非公開 🔒', btnClose:'閉じる', postComments:'コメント', postCommentPlaceholder:'フォロワーへのコメントを書く...', postNoComments:'まだコメントはありません。最初のコメントを書きましょう！', postLoadingComments:'コメントを読み込んでいます...', postEdit:'投稿を編集', postDelete:'投稿を削除', postNoPostsYet:'まだ投稿がありません。最初の投稿をしましょう！', postNoPostsYetProfile:'ここにはまだ投稿がありません！', postLikedByCount:'{n} 人がいいねしました', chatStartNow:'今すぐ会話を始めて、最初のメッセージを送りましょう！💬', chatNoChatsYet:'まだチャットがありません。友達を探してチャットを始めましょう！', chatApproveFirst:'メッセージの内容を見るには先に承認してください 🔒', notifNoneYet:'新しいやり取りや通知はありません', friendReqNone:'現在フレンドリクエストはありません。', msgReqNone:'現在メッセージリクエストはありません。', searchNoResults:'一致する結果がありません。', exploreNoMedia:'現在公開されている写真や動画はありません。' },
+      ko: { appTagline:'홀로그래픽 커뮤니케이션의 새로운 세대 🌌', tabLogin:'로그인', tabRegister:'새 계정', labelEmail:'이메일', labelPassword:'비밀번호', btnLogin:'KALIMA 접속 ⚡', labelNickname:'닉네임', labelLanguage:'언어', labelDob:'생년월일', labelGender:'성별', optChoose:'선택...', optMale:'남성', optFemale:'여성', labelPhone:'휴대폰 번호', btnRegister:'KALIMA 계정 만들기 🧬', menuTitle:'KALIMA 메뉴', menuChat:'개인 채팅 (DM)', menuLive:'라이브', menuEditProfile:'프로필 수정', menuSettings:'계정 및 개인정보 설정 ⚙️', menuLogout:'로그아웃', settingsTitle:'개인정보 및 보안', settingsLanguageLabel:'앱 언어', settingsPrivacyLabel:'계정 공개 범위', settingsPublic:'공개 🌐', settingsPrivate:'비공개 🔒', btnClose:'닫기', postComments:'댓글', postCommentPlaceholder:'팔로워를 위한 댓글을 작성하세요...', postNoComments:'아직 댓글이 없습니다.. 첫 댓글을 남겨보세요!', postLoadingComments:'댓글을 불러오는 중...', postEdit:'게시물 수정', postDelete:'게시물 삭제', postNoPostsYet:'아직 게시물이 없습니다.. 첫 게시물을 올려보세요!', postNoPostsYetProfile:'여기에는 아직 게시물이 없습니다!', postLikedByCount:'{n}명이 좋아합니다', chatStartNow:'지금 대화를 시작하고 첫 메시지를 보내보세요! 💬', chatNoChatsYet:'아직 채팅이 없습니다.. 친구를 찾아 채팅을 시작하세요!', chatApproveFirst:'메시지 내용을 보려면 먼저 수락하세요 🔒', notifNoneYet:'새로운 상호작용이나 알림이 없습니다', friendReqNone:'현재 친구 요청이 없습니다.', msgReqNone:'현재 메시지 요청이 없습니다.', searchNoResults:'일치하는 결과가 없습니다.', exploreNoMedia:'현재 공개된 사진이나 동영상이 없습니다.' }
+    };
+
+    // 🌍 قائمة رموز الدول الدولية لأرقام الجوال (تغطي دول العالم) — [الرمز ISO2, رمز الاتصال, الاسم بالعربية]
+    const COUNTRY_CODES = [
+      ['SA','+966','السعودية'],['AE','+971','الإمارات'],['EG','+20','مصر'],['KW','+965','الكويت'],['QA','+974','قطر'],
+      ['BH','+973','البحرين'],['OM','+968','عُمان'],['JO','+962','الأردن'],['LB','+961','لبنان'],['IQ','+964','العراق'],
+      ['SY','+963','سوريا'],['YE','+967','اليمن'],['PS','+970','فلسطين'],['LY','+218','ليبيا'],['TN','+216','تونس'],
+      ['DZ','+213','الجزائر'],['MA','+212','المغرب'],['SD','+249','السودان'],['SO','+252','الصومال'],['MR','+222','موريتانيا'],
+      ['DJ','+253','جيبوتي'],['KM','+269','جزر القمر'],
+      ['US','+1','الولايات المتحدة'],['CA','+1','كندا'],['GB','+44','بريطانيا'],['IE','+353','أيرلندا'],
+      ['FR','+33','فرنسا'],['DE','+49','ألمانيا'],['ES','+34','إسبانيا'],['PT','+351','البرتغال'],['IT','+39','إيطاليا'],
+      ['NL','+31','هولندا'],['BE','+32','بلجيكا'],['CH','+41','سويسرا'],['AT','+43','النمسا'],['SE','+46','السويد'],
+      ['NO','+47','النرويج'],['DK','+45','الدنمارك'],['FI','+358','فنلندا'],['PL','+48','بولندا'],['GR','+30','اليونان'],
+      ['RU','+7','روسيا'],['UA','+380','أوكرانيا'],['RO','+40','رومانيا'],['CZ','+420','التشيك'],['HU','+36','المجر'],
+      ['BG','+359','بلغاريا'],['RS','+381','صربيا'],['HR','+385','كرواتيا'],['SK','+421','سلوفاكيا'],['SI','+386','سلوفينيا'],
+      ['TR','+90','تركيا'],['AZ','+994','أذربيجان'],['GE','+995','جورجيا'],['AM','+374','أرمينيا'],
+      ['IR','+98','إيران'],['PK','+92','باكستان'],['AF','+93','أفغانستان'],['IN','+91','الهند'],['BD','+880','بنغلاديش'],
+      ['LK','+94','سريلانكا'],['NP','+977','نيبال'],
+      ['CN','+86','الصين'],['JP','+81','اليابان'],['KR','+82','كوريا الجنوبية'],['MN','+976','منغوليا'],
+      ['ID','+62','إندونيسيا'],['MY','+60','ماليزيا'],['SG','+65','سنغافورة'],['PH','+63','الفلبين'],['TH','+66','تايلاند'],
+      ['VN','+84','فيتنام'],['MM','+95','ميانمار'],['KH','+855','كمبوديا'],['LA','+856','لاوس'],
+      ['AU','+61','أستراليا'],['NZ','+64','نيوزيلندا'],
+      ['ZA','+27','جنوب أفريقيا'],['NG','+234','نيجيريا'],['KE','+254','كينيا'],['ET','+251','إثيوبيا'],['GH','+233','غانا'],
+      ['TZ','+255','تنزانيا'],['UG','+256','أوغندا'],['SN','+221','السنغال'],['CI','+225','ساحل العاج'],['CM','+237','الكاميرون'],
+      ['BR','+55','البرازيل'],['MX','+52','المكسيك'],['AR','+54','الأرجنتين'],['CO','+57','كولومبيا'],['CL','+56','تشيلي'],
+      ['PE','+51','بيرو'],['VE','+58','فنزويلا'],['EC','+593','الإكوادور']
+    ];
+
+    // 🏳️ توليد إيموجي علم الدولة من رمزها الدولي ISO2 دون الحاجة لتخزينه يدوياً
+    function isoToFlag(iso2) {
+      return String.fromCodePoint(...[...iso2.toUpperCase()].map(c => 127397 + c.charCodeAt(0)));
+    }
+
+    function getCurrentLang() { return localStorage.getItem('kalima_lang') || 'ar'; }
+
+    // 🌐 دالة الترجمة العامة t(key, vars): تُستخدم داخل كل الدوال التي تبني
+    // محتوى ديناميكياً (منشورات، تعليقات، محادثات، إشعارات..) بدل كتابة
+    // النص العربي مباشرة، لتتغيّر كل هذه الحقول فوراً مع تغيير اللغة، وليس
+    // فقط نصوص شاشة الدخول والقائمة الجانبية كما كان سابقاً.
+    // تدعم استبدال placeholders مثل {n} بقيمة فعلية: t('postLikedByCount', {n: 12})
+    function t(key, vars) {
+      const dict = TRANSLATIONS[getCurrentLang()] || TRANSLATIONS.ar;
+      let str = dict[key] !== undefined ? dict[key] : (TRANSLATIONS.ar[key] !== undefined ? TRANSLATIONS.ar[key] : key);
+      if (vars) {
+        Object.keys(vars).forEach(k => { str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), vars[k]); });
+      }
+      return str;
+    }
+
+    // 🔤 تطبيق اللغة المختارة على كل نصوص الواجهة المُعلَّمة بـ data-i18n + اتجاه الصفحة
+    function applyLanguage(langCode) {
+      const lang = LANGUAGES.find(l => l.code === langCode) || LANGUAGES[0];
+      const dict = TRANSLATIONS[lang.code] || TRANSLATIONS.ar;
+
+      document.documentElement.setAttribute('lang', lang.code);
+      document.documentElement.setAttribute('dir', lang.dir);
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) el.textContent = dict[key];
+      });
+
+      // مزامنة كل قوائم اختيار اللغة الظاهرة في الواجهة (شاشة الدخول + الإعدادات)
+      document.querySelectorAll('.app-language-select').forEach(sel => { sel.value = lang.code; });
+
+      localStorage.setItem('kalima_lang', lang.code);
+
+      // 🔧 إعادة رسم كل الأقسام الديناميكية (المنشورات، المحادثات، الإشعارات،
+      // طلبات الصداقة/الرسائل) بعد تغيير اللغة مباشرة، بدلاً من انتظار حدث
+      // جديد من Firestore لتحديثها. هذا هو ما يجعل "كل الحقول" تتغير فوراً
+      // عند تبديل اللغة، وليس فقط عناصر الواجهة الثابتة.
+      refreshDynamicUIForLanguageChange();
+
+      return lang;
+    }
+
+    // يعيد استدعاء دوال تحميل المحتوى الحي الآمنة لإعادة الاستدعاء (كلها
+    // تُلغي اشتراكها القديم أولاً) لتُعاد ترجمة نصوصها الثابتة فوراً
+    function refreshDynamicUIForLanguageChange() {
+      const user = auth.currentUser;
+      if (!user) return;
+      try { loadLivePosts(); } catch (e) {}
+      try { if (activeProfileUid) loadProfilePosts(activeProfileUid); } catch (e) {}
+      try { loadChatsList(); } catch (e) {}
+      try { loadNotifications(user.uid); } catch (e) {}
+      try { loadPendingRequests(user.uid); } catch (e) {}
+    }
+
+    // يُستدعى عند تغيير اللغة يدوياً من المستخدم (شاشة الدخول أو الإعدادات)
+    function changeAppLanguage(langCode) {
+      const lang = applyLanguage(langCode);
+
+      // مزامنة رمز دولة الجوال تلقائياً مع اللغة المختارة في شاشة إنشاء الحساب (فقط لو لم يغيّره المستخدم يدوياً)
+      const countrySelect = document.getElementById('reg-country-code');
+      if (countrySelect && !countrySelect.dataset.manuallySet) {
+        countrySelect.value = lang.defaultCountry;
+        updatePhoneHint();
+      }
+
+      // إن كان المستخدم مسجّلاً دخوله بالفعل، احفظ تفضيل اللغة في حسابه لتُطبَّق تلقائياً في المرات القادمة
+      const user = auth.currentUser;
+      if (user) {
+        db.collection('users').doc(user.uid).set({ language: lang.code }, { merge: true }).catch(() => {});
+      }
+    }
+
+    function onCountryCodeManualChange() {
+      const sel = document.getElementById('reg-country-code');
+      if (sel) sel.dataset.manuallySet = '1';
+      updatePhoneHint();
+    }
+
+    function updatePhoneHint() {
+      const sel = document.getElementById('reg-country-code');
+      const hint = document.getElementById('reg-phone-hint');
+      if (sel && hint) {
+        const entry = COUNTRY_CODES.find(c => c[0] === sel.value);
+        hint.textContent = entry ? `${isoToFlag(entry[0])} ${entry[2]} ${entry[1]}` : '';
+      }
+    }
+
+    // 🏗️ تعبئة كل قوائم اختيار اللغة ورمز الدولة عند تحميل الصفحة
+    function initLanguageAndCountrySystem() {
+      // قوائم اختيار اللغة (شاشة الدخول + شاشة التسجيل + الإعدادات)
+      const langSelects = [
+        document.getElementById('auth-language-switcher'),
+        document.getElementById('reg-language'),
+        document.getElementById('setting-language')
+      ].filter(Boolean);
+
+      langSelects.forEach(sel => {
+        sel.classList.add('app-language-select');
+        sel.innerHTML = LANGUAGES.map(l => `<option value="${l.code}">${l.name}</option>`).join('');
+      });
+
+      // ربط قائمة لغة التسجيل بنفس آلية تغيير اللغة الفورية (لترجمة بقية النموذج أثناء التسجيل أيضاً)
+      const regLang = document.getElementById('reg-language');
+      if (regLang) regLang.addEventListener('change', () => changeAppLanguage(regLang.value));
+
+      // قائمة رموز الدول لحقل الجوال
+      const countrySelect = document.getElementById('reg-country-code');
+      if (countrySelect) {
+        countrySelect.innerHTML = COUNTRY_CODES
+          .map(c => `<option value="${c[0]}">${isoToFlag(c[0])} ${c[1]} — ${c[2]}</option>`)
+          .join('');
+      }
+
+      // تحديد اللغة المبدئية: المحفوظة سابقاً، وإلا لغة المتصفح، وإلا العربية
+      const browserLang = (navigator.language || 'ar').split('-')[0];
+      const savedLang = localStorage.getItem('kalima_lang');
+      const initialLang = savedLang || (LANGUAGES.some(l => l.code === browserLang) ? browserLang : 'ar');
+      const appliedLang = applyLanguage(initialLang);
+
+      if (countrySelect) {
+        countrySelect.value = appliedLang.defaultCountry;
+        updatePhoneHint();
+      }
+    }
+
+    // ✅ التحقق من صحة رقم الجوال بشكل عام (متوافق مع معيار E.164 الدولي، وليس محصوراً بالسعودية فقط)
+    // هذا يمنع فشل التسجيل لمستخدمي الدول غير السعودية
+    function isValidInternationalPhone(dialCode, localNumber) {
+      const digitsOnly = localNumber.replace(/[\s\-()]/g, '');
+      if (!/^\d+$/.test(digitsOnly)) return false;
+      const fullLength = dialCode.replace('+', '').length + digitsOnly.length;
+      // الحد الأقصى لطول الرقم الدولي وفق E.164 هو 15 رقماً، وحد أدنى معقول 7 أرقام
+      return digitsOnly.length >= 5 && fullLength <= 15;
+    }
 
     // ============================================================
     // 🛠️ دوال مساعدة (Helper Functions)
@@ -740,6 +1068,15 @@
       // إعادة استدعائها هنا كانت تسبب إلغاء واشتراك القائمة وإعادة جلب بيانات
       // كل صديق محادثة من جديد على أي تغيّر بسيط، وهو حمل غير ضروري.
       updateTotalUnreadBadgeFromCache();
+    }
+
+    // 🔢 تنسيق الأعداد الكبيرة (إعجابات/تعليقات) بشكل مختصر ومقروء: 1.2K, 3.4M
+    // بدل عرض رقم طويل مباشرة (مثال: يظهر "100 إعجاب" أو "1.2K إعجاب" بدل "1243")
+    function formatCount(n) {
+      const num = Number(n) || 0;
+      if (num < 1000) return String(num);
+      if (num < 1000000) return (num / 1000).toFixed(num % 1000 === 0 ? 0 : 1) + 'K';
+      return (num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1) + 'M';
     }
 
     function escapeHtml(str) {
@@ -835,11 +1172,43 @@
       const btn = e.target.querySelector('button[type="submit"]');
       const originalText = btn ? btn.innerText : '';
       const nickname = document.getElementById('reg-username').value.trim();
+      const language = document.getElementById('reg-language').value || getCurrentLang();
+      const dob = document.getElementById('reg-dob').value;
+      const gender = document.getElementById('reg-gender').value;
+      const countryIso = document.getElementById('reg-country-code').value;
+      const dialCode = (COUNTRY_CODES.find(c => c[0] === countryIso) || ['SA','+966'])[1];
+      const phoneLocal = document.getElementById('reg-phone').value.trim();
 
       if (nickname.length < 2) {
         alert('⚠️ الرجاء إدخال اسم مستعار لا يقل عن حرفين.');
         return;
       }
+
+      if (!dob || !gender || !phoneLocal) {
+        alert('⚠️ الرجاء تعبئة تاريخ الميلاد والجنس ورقم الجوال، فهي حقول إلزامية.');
+        return;
+      }
+
+      const dobDate = new Date(dob);
+      const today = new Date();
+      let age = today.getFullYear() - dobDate.getFullYear();
+      const m = today.getMonth() - dobDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) age--;
+      if (dobDate > today) {
+        alert('⚠️ تاريخ الميلاد غير صالح.');
+        return;
+      }
+      if (age < 13) {
+        alert('⚠️ يجب أن يكون عمرك 13 عاماً على الأقل لاستخدام التطبيق.');
+        return;
+      }
+
+      // ✅ تحقق دولي عام من صحة رقم الجوال (يعمل مع رمز أي دولة وليس السعودية فقط)
+      if (!isValidInternationalPhone(dialCode, phoneLocal)) {
+        alert('⚠️ الرجاء إدخال رقم جوال صحيح مع اختيار رمز الدولة المناسب.');
+        return;
+      }
+      const phone = `${dialCode}${phoneLocal.replace(/[\s\-()]/g, '').replace(/^0+/, '')}`;
 
       try {
         if (btn) { btn.disabled = true; btn.innerText = 'جاري الإنشاء... ⏳'; btn.style.opacity = '0.7'; }
@@ -855,7 +1224,17 @@
         await db.collection('users').doc(uid).set({
           nickname: nickname,
           username: 'user_' + uid.substring(0, 8),
+          usernameLocked: false,
           bio: '',
+          language: language,
+          dob: dob,
+          gender: gender,
+          phone: phone,
+          phoneCountry: countryIso,
+          phoneLocal: phoneLocal.replace(/[\s\-()]/g, '').replace(/^0+/, ''),
+          dobChanged: false,
+          genderChanged: false,
+          phoneChanged: false,
           avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`,
           isVerified: false,
           isPrivate: false,
@@ -915,7 +1294,10 @@
         if (notificationsListenerUnsubscribe) { notificationsListenerUnsubscribe(); notificationsListenerUnsubscribe = null; }
         if (friendRequestsIncomingUnsubscribe) { friendRequestsIncomingUnsubscribe(); friendRequestsIncomingUnsubscribe = null; }
         if (messageRequestsIncomingUnsubscribe) { messageRequestsIncomingUnsubscribe(); messageRequestsIncomingUnsubscribe = null; }
-        if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
+        if (livePostsPublicUnsubscribe) { livePostsPublicUnsubscribe(); livePostsPublicUnsubscribe = null; }
+        if (livePostsOwnUnsubscribe) { livePostsOwnUnsubscribe(); livePostsOwnUnsubscribe = null; }
+        livePostsPublicMap.clear();
+        livePostsOwnMap.clear();
         Object.values(activeCommentsUnsubscribe).forEach(unsub => unsub && unsub());
         activeCommentsUnsubscribe = {};
 
@@ -1061,7 +1443,7 @@
           });
 
           if (docs.length === 0) {
-            container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد تفاعلات أو إشعارات جديدة</div>';
+            container.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">${t('notifNoneYet')}</div>`;
             return;
           }
 
@@ -1104,22 +1486,12 @@
         });
     }
 
+    // 🔧 إصلاح: كانت تبحث عن بطاقة المنشور بالـ DOM وتُظهر "غير موجود" لو المنشور
+    // غير معروض حالياً بالصفحة الرئيسية (مثلاً منشور قديم تجاوز حد الـ 50 الأخيرة).
+    // الآن نفتح نافذة عرض المنشور مباشرة عبر رقمه (جلب مباشر من Firestore)، فتعمل
+    // دائماً بغض النظر عن كون المنشور معروضاً بالقائمة الحالية أم لا.
     function scrollToPost(postId) {
-      switchMainTab('home');
-      setTimeout(() => {
-        let postElement = document.querySelector(`[data-post-id="${postId}"]`);
-        if (postElement) {
-          postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          postElement.style.borderColor = '#00f2fe';
-          postElement.style.boxShadow = '0 0 25px rgba(0, 242, 254, 0.3)';
-          setTimeout(() => {
-            postElement.style.borderColor = '';
-            postElement.style.boxShadow = '';
-          }, 3000);
-        } else {
-          showToast('⚠️ المنشور غير موجود حالياً', 'info');
-        }
-      }, 600);
+      openPostView(postId);
     }
 
     // ============================================================
@@ -1138,7 +1510,7 @@
           updateRequestsBadge();
           if (!container) return;
           if (snapshot.empty) {
-            container.innerHTML = '<div class="text-center py-3 text-slate-500 text-xs">لا توجد طلبات صداقة حالياً.</div>';
+            container.innerHTML = `<div class="text-center py-3 text-slate-500 text-xs">${t('friendReqNone')}</div>`;
             return;
           }
           container.innerHTML = snapshot.docs.map(doc => {
@@ -1171,7 +1543,7 @@
           updateRequestsBadge();
           if (!container) return;
           if (pendingIncoming.length === 0) {
-            container.innerHTML = '<div class="text-center py-3 text-slate-500 text-xs">لا توجد طلبات رسائل حالياً.</div>';
+            container.innerHTML = `<div class="text-center py-3 text-slate-500 text-xs">${t('msgReqNone')}</div>`;
             return;
           }
           container.innerHTML = pendingIncoming.map(doc => {
@@ -1267,8 +1639,13 @@
         const data = doc.data();
         currentUserProfile = data;
 
+        // 🌐 تطبيق لغة الحساب المحفوظة تلقائياً عند الدخول من جهاز جديد لم تُحفظ فيه لغة سابقاً
+        if (data.language && !localStorage.getItem('kalima_lang')) {
+          applyLanguage(data.language);
+        }
+
         if (isViewingOwnProfile) {
-          updateUserUI(data.nickname, data.username, data.avatar, data.bio, data.isVerified, data.isPrivate);
+          updateUserUI(data.nickname, data.username, data.avatar, data.bio, data.isVerified, data.isPrivate, data.dob, data.gender, data.phone, data.usernameLocked, data.dobChanged, data.genderChanged, data.phoneChanged);
           document.getElementById('followers-count').innerText = (data.followers || []).length;
           document.getElementById('following-count').innerText = (data.following || []).length;
           currentProfileFollowers = data.followers || [];
@@ -1279,7 +1656,7 @@
       });
     }
 
-    function updateUserUI(name, username, avatar, bio, isVerified, isPrivate) {
+    function updateUserUI(name, username, avatar, bio, isVerified, isPrivate, dob, gender, phone, usernameLocked, dobChanged, genderChanged, phoneChanged) {
       document.getElementById('main-nickname').textContent = name + " ";
       document.getElementById('profile-page-name').textContent = name + " ";
       document.getElementById('main-header-username').textContent = "@" + username;
@@ -1291,9 +1668,32 @@
 
       document.getElementById('profile-display-bio').textContent = `"${bio || 'لا يوجد نبذة حتى الآن...'}"`;
 
+      const usernameInput = document.getElementById('edit-username');
+      usernameInput.value = username;
+      usernameInput.disabled = !!usernameLocked;
+      usernameInput.classList.toggle('opacity-50', !!usernameLocked);
+      document.getElementById('username-lock-note').classList.toggle('hidden', !usernameLocked);
+
       document.getElementById('edit-nickname').value = name;
-      document.getElementById('edit-username').value = username;
       document.getElementById('edit-bio').value = bio || '';
+
+      const dobInput = document.getElementById('edit-dob');
+      dobInput.value = dob || '';
+      dobInput.disabled = !!dobChanged;
+      dobInput.classList.toggle('opacity-50', !!dobChanged);
+      document.getElementById('dob-lock-note').classList.toggle('hidden', !dobChanged);
+
+      const genderInput = document.getElementById('edit-gender');
+      genderInput.value = gender || '';
+      genderInput.disabled = !!genderChanged;
+      genderInput.classList.toggle('opacity-50', !!genderChanged);
+      document.getElementById('gender-lock-note').classList.toggle('hidden', !genderChanged);
+
+      const phoneInput = document.getElementById('edit-phone');
+      phoneInput.value = phone || '';
+      phoneInput.disabled = !!phoneChanged;
+      phoneInput.classList.toggle('opacity-50', !!phoneChanged);
+      document.getElementById('phone-lock-note').classList.toggle('hidden', !phoneChanged);
 
       const privacySelect = document.getElementById('setting-privacy');
       if (privacySelect) privacySelect.value = isPrivate ? 'private' : 'public';
@@ -1316,7 +1716,7 @@
       if (!user || !currentUserProfile) return;
 
       activeProfileUid = user.uid;
-      updateUserUI(currentUserProfile.nickname, currentUserProfile.username, currentUserProfile.avatar, currentUserProfile.bio, currentUserProfile.isVerified, currentUserProfile.isPrivate);
+      updateUserUI(currentUserProfile.nickname, currentUserProfile.username, currentUserProfile.avatar, currentUserProfile.bio, currentUserProfile.isVerified, currentUserProfile.isPrivate, currentUserProfile.dob, currentUserProfile.gender, currentUserProfile.phone, currentUserProfile.usernameLocked, currentUserProfile.dobChanged, currentUserProfile.genderChanged, currentUserProfile.phoneChanged);
       document.getElementById('followers-count').innerText = (currentUserProfile.followers || []).length;
       document.getElementById('following-count').innerText = (currentUserProfile.following || []).length;
       currentProfileFollowers = currentUserProfile.followers || [];
@@ -1351,7 +1751,7 @@
         if (!doc.exists) return;
         const data = doc.data();
 
-        updateUserUI(data.nickname, data.username, data.avatar, data.bio, data.isVerified, data.isPrivate);
+        updateUserUI(data.nickname, data.username, data.avatar, data.bio, data.isVerified, data.isPrivate, data.dob, data.gender, data.phone, data.usernameLocked, data.dobChanged, data.genderChanged, data.phoneChanged);
         document.getElementById('followers-count').innerText = (data.followers || []).length;
         document.getElementById('following-count').innerText = (data.following || []).length;
         currentProfileFollowers = data.followers || [];
@@ -1508,7 +1908,16 @@
           const nickname = (data.nickname || '').toLowerCase();
           const username = (data.username || '').toLowerCase();
           if (nickname.includes(term) || username.includes(term)) {
-            matches.push({ uid: doc.id, ...data });
+            // 🔒 إصلاح ثغرة تسريب بيانات حساسة: كان الكود القديم يستخدم
+            // "...data" وينشر كامل وثيقة المستخدم (رقم الجوال، تاريخ الميلاد،
+            // الجنس..) إلى نتائج البحث المعروضة في الواجهة! هنا نأخذ فقط
+            // الحقول العامة الآمنة اللازمة لعرض نتيجة البحث.
+            matches.push({
+              uid: doc.id,
+              nickname: data.nickname || 'مستخدم كَلِمَة',
+              username: data.username || '',
+              avatar: data.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user'
+            });
           }
         });
         renderSearchResults(matches);
@@ -1521,7 +1930,7 @@
     function renderSearchResults(users) {
       const resultsContainer = document.getElementById('friend-search-results');
       if (users.length === 0) {
-        resultsContainer.innerHTML = '<div class="text-center py-3 text-slate-500 text-[11px]">لا توجد نتائج مطابقة.</div>';
+        resultsContainer.innerHTML = `<div class="text-center py-3 text-slate-500 text-[11px]">${t('searchNoResults')}</div>`;
         return;
       }
       resultsContainer.innerHTML = users.map(u => `
@@ -1546,16 +1955,64 @@
 
     async function saveProfileChanges() {
       const user = auth.currentUser;
-      if (!user) return;
+      if (!user || !currentUserProfile) return;
+
+      const isUsernameLocked = !!currentUserProfile.usernameLocked;
+      const isDobChanged = !!currentUserProfile.dobChanged;
+      const isGenderChanged = !!currentUserProfile.genderChanged;
+      const isPhoneChanged = !!currentUserProfile.phoneChanged;
+
       const newNick = document.getElementById('edit-nickname').value.trim();
-      const newUsername = document.getElementById('edit-username').value.trim().replaceAll(' ', '_');
       const newBio = document.getElementById('edit-bio').value.trim();
+
+      // 🔒 اسم المستخدم: إن كان مقفلاً نهائياً، نُبقي القيمة الحالية بلا أي تعديل
+      const newUsername = isUsernameLocked
+        ? currentUserProfile.username
+        : document.getElementById('edit-username').value.trim().replaceAll(' ', '_');
+
+      // 🔒 تاريخ الميلاد / الجنس / الجوال: إن استُهلكت فرصة التعديل الوحيدة، نُبقي القيمة الحالية
+      const newDob = isDobChanged ? (currentUserProfile.dob || '') : document.getElementById('edit-dob').value;
+      const newGender = isGenderChanged ? (currentUserProfile.gender || '') : document.getElementById('edit-gender').value;
+      const newPhone = isPhoneChanged ? (currentUserProfile.phone || '') : document.getElementById('edit-phone').value.trim();
 
       if (!newNick || !newUsername) return alert("الرجاء تعبئة اسم المستخدم والاسم المستعار.");
 
-      // 🔧 التحقق من صيغة اسم المستخدم: أحرف إنجليزية/أرقام/شرطة سفلية فقط، بين 3 و20 حرفاً
-      if (!/^[A-Za-z0-9_]{3,20}$/.test(newUsername)) {
+      // 🔧 التحقق من صيغة اسم المستخدم (فقط إذا لم يكن مقفلاً بعد)
+      if (!isUsernameLocked && !/^[A-Za-z0-9_]{3,20}$/.test(newUsername)) {
         return alert("⚠️ اسم المستخدم يجب أن يتكوّن من أحرف إنجليزية وأرقام و( _ ) فقط، بين 3 و20 حرفاً.");
+      }
+
+      // 🔧 تاريخ الميلاد إلزامي، ويُتحقق منه فقط إذا لم تُستهلك فرصة التعديل بعد
+      if (!isDobChanged) {
+        if (!newDob) return alert("⚠️ الرجاء تعبئة تاريخ الميلاد.");
+        const dobDate = new Date(newDob);
+        const today = new Date();
+        let age = today.getFullYear() - dobDate.getFullYear();
+        const m = today.getMonth() - dobDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) age--;
+        if (dobDate > today) return alert("⚠️ تاريخ الميلاد غير صالح.");
+        if (age < 13) return alert("⚠️ يجب أن يكون عمرك 13 عاماً على الأقل لاستخدام التطبيق.");
+      }
+
+      // 🔧 الجنس إلزامي، ويُتحقق منه فقط إذا لم تُستهلك فرصة التعديل بعد
+      if (!isGenderChanged && !newGender) {
+        return alert("⚠️ الرجاء اختيار الجنس.");
+      }
+
+      // 🔧 رقم الجوال إلزامي، ويُتحقق منه فقط إذا لم تُستهلك فرصة التعديل بعد.
+      // 🐞 إصلاح: كان التحقق القديم يقبل فقط صيغة سعودية محلية (05xxxxxxxx)، بينما
+      // القيمة المعروضة فعلياً في هذا الحقل هي الرقم المخزّن كاملاً مع رمز الدولة
+      // الدولي (مثال: "+966554443333")، تماماً كما يُحفظ عند التسجيل. هذا كان يعني
+      // أن أول محاولة حفظ للبروفايل تفشل دائماً بخطأ "رقم جوال غير صحيح" حتى لو لم
+      // يلمس المستخدم هذا الحقل إطلاقاً. الآن نتحقق بنفس المعيار الدولي العام
+      // المستخدم في التسجيل (isValidInternationalPhone)، بدل قصره على السعودية فقط.
+      if (!isPhoneChanged) {
+        if (!newPhone) return alert("⚠️ الرجاء تعبئة رقم الجوال.");
+        const cleanedPhone = newPhone.replace(/[\s\-()]/g, '');
+        const digitsOnly = cleanedPhone.replace(/^\+/, '');
+        if (!/^\d+$/.test(digitsOnly) || digitsOnly.length < 8 || digitsOnly.length > 15) {
+          return alert("⚠️ الرجاء إدخال رقم جوال صحيح (مع رمز الدولة، مثال: +966 5xxxxxxxx).");
+        }
       }
 
       const btn = document.getElementById('save-profile-btn');
@@ -1564,16 +2021,38 @@
       try {
         if (btn) { btn.disabled = true; btn.innerText = 'جاري الحفظ... ⏳'; btn.style.opacity = '0.7'; }
 
-        // 🔧 التحقق أن اسم المستخدم غير مستخدم من قبل حساب آخر قبل الحفظ
-        const clashSnap = await db.collection('users').where('username', '==', newUsername).limit(1).get();
-        const clash = clashSnap.docs.find(d => d.id !== user.uid);
-        if (clash) {
-          alert("⚠️ اسم المستخدم هذا مستخدم بالفعل من قبل حساب آخر، الرجاء اختيار اسم مختلف.");
-          return;
+        // 🔧 التحقق أن اسم المستخدم غير مستخدم من قبل حساب آخر قبل الحفظ (فقط إذا لم يكن مقفلاً)
+        if (!isUsernameLocked) {
+          const clashSnap = await db.collection('users').where('username', '==', newUsername).limit(1).get();
+          const clash = clashSnap.docs.find(d => d.id !== user.uid);
+          if (clash) {
+            alert("⚠️ اسم المستخدم هذا مستخدم بالفعل من قبل حساب آخر، الرجاء اختيار اسم مختلف.");
+            return;
+          }
         }
 
+        const updateData = {
+          nickname: newNick,
+          username: newUsername,
+          bio: newBio,
+          dob: newDob,
+          gender: newGender,
+          phone: newPhone
+        };
+
+        // 🔒 بمجرد الحفظ، يُقفل اسم المستخدم نهائياً إن لم يكن مقفلاً من قبل
+        if (!isUsernameLocked) updateData.usernameLocked = true;
+
+        // 🐞 إصلاح: كانت فرصة التعديل الوحيدة لتاريخ الميلاد/الجنس/الجوال تُستهلك
+        // بمجرد الضغط على "حفظ" ولو مرة واحدة — حتى لو كان المستخدم فقط يعدّل
+        // النبذة الشخصية ولم يلمس هذه الحقول إطلاقاً! الآن تُستهلك الفرصة فقط
+        // إذا تغيّرت القيمة فعلياً عن القيمة المخزّنة سابقاً.
+        if (!isDobChanged && newDob !== (currentUserProfile.dob || '')) updateData.dobChanged = true;
+        if (!isGenderChanged && newGender !== (currentUserProfile.gender || '')) updateData.genderChanged = true;
+        if (!isPhoneChanged && newPhone !== (currentUserProfile.phone || '')) updateData.phoneChanged = true;
+
         await user.updateProfile({ displayName: newNick });
-        await db.collection('users').doc(user.uid).update({ nickname: newNick, username: newUsername, bio: newBio });
+        await db.collection('users').doc(user.uid).update(updateData);
         userProfileCache.delete(user.uid);
         alert("تم تحديث الملف الشخصي بنجاح 💾!");
         closeEditProfileModal();
@@ -1693,6 +2172,8 @@
           media: mediaData,
           isPrivate: currentUserProfile.isPrivate || false,
           likes: [],
+          likesCount: 0,
+          commentsCount: 0,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -1753,44 +2234,120 @@
     // ============================================================
     // 📡 تحميل المنشورات الحية
     // ============================================================
+    // ذاكرة مساعدة لعرض شبكة "استكشاف" الوسائط دون إعادة حساب كل بطاقة
+    // من الصفر مع كل تحديث بسيط (راجع buildExploreCardHtml/renderExploreGrid)
+    let livePostsOrder = [];
+    const livePostsMediaHtmlMap = new Map();
+
+    function buildExploreCardHtml(postId, post) {
+      if (!(post.media && post.media.url)) return '';
+      const isVideo = post.media.type === 'video';
+      return `
+        <div class="relative aspect-square rounded-lg overflow-hidden border border-slate-800 bg-slate-900 group cursor-pointer" onclick="window.open('${escapeForInlineJs(post.media.url)}', '_blank', 'noopener,noreferrer')">
+          ${isVideo
+            ? `<video src="${escapeHtml(post.media.url)}" class="w-full h-full object-cover" muted></video>
+               <span class="absolute top-1 right-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-md"><i class="fa-solid fa-play"></i></span>`
+            : `<img src="${escapeHtml(post.media.url)}" class="w-full h-full object-cover">`
+          }
+        </div>`;
+    }
+
+    function renderExploreGrid() {
+      const exploreContainer = document.getElementById('explore-grid-container');
+      if (!exploreContainer) return;
+      const html = livePostsOrder.map(id => livePostsMediaHtmlMap.get(id) || '').join('');
+      exploreContainer.innerHTML = html || `<div class="col-span-3 text-center py-6 text-slate-500 text-xs">${t('exploreNoMedia')}</div>`;
+    }
+
+    // 🔒 ملاحظة أمان مهمة (لم تتغير): لا نطلب من Firestore هنا أي منشورات خاصة
+    // لغير صاحبها إطلاقاً — هذا يمنع تسريبها عبر DevTools > Network/Console كما كان
+    // سابقاً. ⚠️ يجب أيضاً فرض نفس الشرط داخل "قواعد أمان Firestore" على الخادم،
+    // لأن أي عميل يمكنه تجاوز كود الواجهة والاستعلام مباشرة عبر الـ API.
+    //
+    // 🐞 الإصلاح الجوهري هنا: كان الاستعلام القديم يطلب فقط where('isPrivate','==',false)
+    // بلا أي استثناء. وبما أن كل منشور يرث خصوصيته من إعدادات صاحبه وقت النشر، فأي
+    // مستخدم حسابه "خاص" كان لا يرى منشوراته هو نفسه أبداً في الصفحة الرئيسية — وهذا
+    // بالضبط سبب مشكلة "أنزل منشور وما يطلع". الحل: نستمع لاستعلامين بالتوازي وندمج
+    // نتائجهما: (1) كل المنشورات العامة من الجميع، (2) كل منشوراتي أنا شخصياً بصرف
+    // النظر عن خصوصيتها — حتى أرى منشوراتي دائماً بغض النظر عن إعداد الخصوصية.
     function loadLivePosts() {
       const user = auth.currentUser;
-      if (livePostsUnsubscribe) { livePostsUnsubscribe(); livePostsUnsubscribe = null; }
-      livePostsUnsubscribe = db.collection('posts').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
-        const container = document.getElementById('posts-container');
-        const exploreContainer = document.getElementById('explore-grid-container');
-        container.innerHTML = '';
-        let exploreHTML = '';
+      if (!user) return;
+      if (livePostsPublicUnsubscribe) { livePostsPublicUnsubscribe(); livePostsPublicUnsubscribe = null; }
+      if (livePostsOwnUnsubscribe) { livePostsOwnUnsubscribe(); livePostsOwnUnsubscribe = null; }
+      livePostsPublicMap.clear();
+      livePostsOwnMap.clear();
+      livePostsOrder = [];
+      livePostsMediaHtmlMap.clear();
 
-        if (snapshot.empty) {
-          container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">لا توجد منشورات حالياً.. كن أول من ينشر!</div>';
-        }
-
-        snapshot.forEach(doc => {
-          const post = doc.data();
-          const postId = doc.id;
-          if (post.isPrivate && post.uid !== user.uid) return;
-          container.innerHTML += createPostCardHTML(postId, post, user.uid);
-
-          if (post.media && post.media.url) {
-            const isVideo = post.media.type === 'video';
-            exploreHTML += `
-              <div class="relative aspect-square rounded-lg overflow-hidden border border-slate-800 bg-slate-900 group cursor-pointer" onclick="window.open('${escapeForInlineJs(post.media.url)}', '_blank', 'noopener,noreferrer')">
-                ${isVideo
-                  ? `<video src="${escapeHtml(post.media.url)}" class="w-full h-full object-cover" muted></video>
-                     <span class="absolute top-1 right-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-md"><i class="fa-solid fa-play"></i></span>`
-                  : `<img src="${escapeHtml(post.media.url)}" class="w-full h-full object-cover">`
-                }
-              </div>`;
-          }
+      livePostsPublicUnsubscribe = db.collection('posts')
+        .where('isPrivate', '==', false)
+        .orderBy('createdAt', 'desc')
+        .limit(50)
+        .onSnapshot(snapshot => {
+          livePostsPublicMap.clear();
+          snapshot.forEach(doc => livePostsPublicMap.set(doc.id, doc.data()));
+          renderLiveFeed();
+        }, err => {
+          console.error("❌ خطأ في تحميل المنشورات العامة:", err);
+          showToast('⚠️ تعذر تحميل المنشورات العامة: ' + err.message, 'info');
         });
 
-        if (exploreContainer) {
-          exploreContainer.innerHTML = exploreHTML || '<div class="col-span-3 text-center py-6 text-slate-500 text-xs">لا توجد صور أو مقاطع عامة حالياً.</div>';
-        }
-      }, err => {
-        console.error("❌ خطأ في تحميل المنشورات:", err);
+      // 🐞 إصلاح حرج: كنا نستخدم where('uid','==', ...) مع orderBy('createdAt') معاً —
+      // وهذا التركيب (شرط مساواة + ترتيب على حقل مختلف) يتطلب "فهرس مركّب" (Composite
+      // Index) في Firestore غير موجود تلقائياً، ولا يُنشأ إلا يدوياً من لوحة Firebase.
+      // بدون هذا الفهرس، الاستعلام بأكمله يفشل بصمت (رسالة خطأ في console فقط
+      // "The query requires an index")، فتبقى منشوراتك الخاصة غائبة دائماً — وهو
+      // بالضبط سبب استمرار المشكلة رغم الإصلاح السابق! الحل: نحذف orderBy من هذا
+      // الاستعلام (شرط المساواة وحده لا يحتاج فهرساً مركّباً ويعمل تلقائياً)، ونعتمد
+      // على الترتيب الذي يتم أصلاً في JavaScript داخل renderLiveFeed بعد الدمج.
+      livePostsOwnUnsubscribe = db.collection('posts')
+        .where('uid', '==', user.uid)
+        .onSnapshot(snapshot => {
+          livePostsOwnMap.clear();
+          snapshot.forEach(doc => livePostsOwnMap.set(doc.id, doc.data()));
+          renderLiveFeed();
+        }, err => {
+          console.error("❌ خطأ في تحميل منشوراتي الخاصة:", err);
+          showToast('⚠️ تعذر تحميل منشوراتك الخاصة: ' + err.message, 'info');
+        });
+    }
+
+    // 🧩 دمج المنشورات العامة + منشوراتي الخاصة، إزالة التكرار، الترتيب حسب
+    // تاريخ النشر، ثم إعادة رسم القائمة — مع الحفاظ على صناديق التعليقات
+    // المفتوحة قبل إعادة الرسم حتى لا تُغلَق فجأة أمام المستخدم.
+    function renderLiveFeed() {
+      const user = auth.currentUser;
+      const container = document.getElementById('posts-container');
+      if (!user || !container) return;
+
+      const merged = new Map();
+      livePostsPublicMap.forEach((data, id) => merged.set(id, data));
+      livePostsOwnMap.forEach((data, id) => merged.set(id, data));
+
+      if (merged.size === 0) {
+        container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">${t('postNoPostsYet')}</div>`;
+        livePostsOrder = [];
+        livePostsMediaHtmlMap.clear();
+        renderExploreGrid();
+        return;
+      }
+
+      const sortedEntries = Array.from(merged.entries()).sort((a, b) => {
+        const aTime = a[1].createdAt ? a[1].createdAt.toMillis() : 0;
+        const bTime = b[1].createdAt ? b[1].createdAt.toMillis() : 0;
+        return bTime - aTime;
       });
+
+      container.innerHTML = sortedEntries.map(([id, data]) => createPostCardHTML(id, data, user.uid)).join('');
+
+      livePostsOrder = sortedEntries.map(([id]) => id);
+      livePostsMediaHtmlMap.clear();
+      sortedEntries.forEach(([id, data]) => {
+        const exploreHtml = buildExploreCardHtml(id, data);
+        if (exploreHtml) livePostsMediaHtmlMap.set(id, exploreHtml);
+      });
+      renderExploreGrid();
     }
 
     function loadProfilePosts(userId) {
@@ -1799,16 +2356,24 @@
       activeProfilePostsUnsubscribe = db.collection('posts').where('uid', '==', userId).onSnapshot(snapshot => {
         if (activeProfileUid !== userId) return;
         const currentUid = auth.currentUser ? auth.currentUser.uid : null;
+        const isOwnProfile = currentUid === userId;
         const container = document.getElementById('my-posts-container');
-        document.getElementById('my-posts-count').innerText = snapshot.size;
-        container.innerHTML = '';
-        if (snapshot.empty) {
-          container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد منشورات هنا بعد!</div>';
+
+        // 🔒 إصلاح ثغرة خصوصية: كانت هذه الدالة تعرض منشورات أي مستخدم آخر
+        // بما فيها منشوراته "الخاصة" لأي زائر يفتح بروفايله، لأن الاستعلام
+        // والعرض لم يكونا يتحققان من isPrivate إطلاقاً. الآن: المنشورات
+        // الخاصة لا تظهر إلا لصاحبها فقط.
+        const visibleDocs = snapshot.docs.filter(doc => isOwnProfile || !doc.data().isPrivate);
+
+        document.getElementById('my-posts-count').innerText = visibleDocs.length;
+
+        if (visibleDocs.length === 0) {
+          container.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">${t('postNoPostsYetProfile')}</div>`;
           return;
         }
-        snapshot.forEach(doc => {
-          container.innerHTML += createPostCardHTML(doc.id, doc.data(), currentUid);
-        });
+
+        // بناء كل البطاقات كسلسلة واحدة ثم كتابتها دفعة واحدة (بدل += داخل حلقة)
+        container.innerHTML = visibleDocs.map(doc => createPostCardHTML(doc.id, doc.data(), currentUid)).join('');
       }, err => {
         console.error("❌ خطأ في تحميل منشورات الملف الشخصي:", err);
       });
@@ -1819,7 +2384,10 @@
     // ============================================================
     function createPostCardHTML(postId, post, userId) {
       const isLiked = (post.likes || []).includes(userId);
-      const likesCount = (post.likes || []).length;
+      // نعتمد أولاً على عداد likesCount الرقمي (أخف وأدق مع المنشورات الشائعة)،
+      // ونرجع لطول مصفوفة likes فقط للمنشورات القديمة التي لا تملك هذا الحقل بعد
+      const likesCount = typeof post.likesCount === 'number' ? post.likesCount : (post.likes || []).length;
+      const commentsCount = typeof post.commentsCount === 'number' ? post.commentsCount : 0;
       const isOwner = post.uid === userId;
 
       let mediaHTML = '';
@@ -1828,8 +2396,8 @@
         if (post.media.type === 'video') {
           mediaHTML = `
             <div class="mt-2 rounded-2xl overflow-hidden border border-cyan-500/30 bg-slate-900 relative group">
-              <video src="${escapeHtml(fileUrl)}" controls class="w-full max-h-72 object-cover"></video>
-              <a href="${escapeHtml(fileUrl)}" target="_blank" download class="absolute top-3 right-3 bg-black/80 hover:bg-cyan-500 hover:text-black text-cyan-400 p-2 rounded-xl text-xs backdrop-blur-md transition flex items-center gap-1 shadow-lg" title="تنزيل الفيديو">
+              <video src="${escapeHtml(fileUrl)}" controls onclick="event.stopPropagation();" class="w-full max-h-72 object-cover"></video>
+              <a href="${escapeHtml(fileUrl)}" target="_blank" download onclick="event.stopPropagation();" class="absolute top-3 right-3 bg-black/80 hover:bg-cyan-500 hover:text-black text-cyan-400 p-2 rounded-xl text-xs backdrop-blur-md transition flex items-center gap-1 shadow-lg" title="تنزيل الفيديو">
                 <i class="fa-solid fa-download"></i> تنزيل
               </a>
             </div>`;
@@ -1837,7 +2405,7 @@
           mediaHTML = `
             <div class="mt-2 rounded-2xl overflow-hidden border border-cyan-500/30 bg-slate-900 relative group">
               <img src="${escapeHtml(fileUrl)}" class="w-full max-h-72 object-cover">
-              <a href="${escapeHtml(fileUrl)}" target="_blank" download class="absolute top-3 right-3 bg-black/80 hover:bg-cyan-500 hover:text-black text-cyan-400 p-2 rounded-xl text-xs backdrop-blur-md transition flex items-center gap-1 shadow-lg" title="تنزيل الصورة / السكرين شوت">
+              <a href="${escapeHtml(fileUrl)}" target="_blank" download onclick="event.stopPropagation();" class="absolute top-3 right-3 bg-black/80 hover:bg-cyan-500 hover:text-black text-cyan-400 p-2 rounded-xl text-xs backdrop-blur-md transition flex items-center gap-1 shadow-lg" title="تنزيل الصورة / السكرين شوت">
                 <i class="fa-solid fa-download"></i> تنزيل
               </a>
             </div>`;
@@ -1849,20 +2417,25 @@
         const safeContent = encodeURIComponent(post.content || '');
         ownerActionsHTML = `
           <div class="flex items-center gap-2">
-            <button onclick="openEditPostModal('${postId}', decodeURIComponent('${safeContent}'))" class="text-cyan-400 hover:text-white p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs transition" title="تعديل المنشور">
+            <button onclick="event.stopPropagation(); openEditPostModal('${postId}', decodeURIComponent('${safeContent}'))" class="text-cyan-400 hover:text-white p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs transition" title="${t('postEdit')}">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <button onclick="deletePost('${postId}')" class="text-red-400 hover:text-white p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs transition" title="حذف المنشور">
+            <button onclick="event.stopPropagation(); deletePost('${postId}')" class="text-red-400 hover:text-white p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs transition" title="${t('postDelete')}">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
         `;
       }
 
+      // 🔧 إعادة تصميم بطاقة المنشور بالصفحة الرئيسية: صارت أخف بصرياً — لا يوجد
+      // صندوق تعليقات مفتوح ولا حقل كتابة داخل القائمة الرئيسية بعد الآن. البطاقة
+      // كاملة قابلة للضغط (data-post-id) وتفتح نافذة "عرض المنشور" المخصصة
+      // (openPostView) حيث يقدر المستخدم يضغط لايك ويكتب تعليقه من الداخل فقط —
+      // هذا يمنع إثقال الصفحة الرئيسية بعشرات صناديق التعليقات المفتوحة دفعة واحدة.
       return `
-        <div class="bg-slate-950/80 p-4 rounded-3xl border border-slate-800 space-y-3 hover:border-cyan-500/30 transition relative shadow-lg" data-post-id="${postId}">
+        <div class="bg-slate-950/80 p-4 rounded-3xl border border-slate-800 space-y-3 hover:border-cyan-500/30 transition relative shadow-lg cursor-pointer" data-post-id="${postId}" onclick="openPostView('${postId}')">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3 cursor-pointer" onclick="${isOwner ? 'viewMyOwnProfile()' : `viewUserProfile('${post.uid}')`}">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="event.stopPropagation(); ${isOwner ? 'viewMyOwnProfile()' : `viewUserProfile('${post.uid}')`}">
               <img src="${escapeHtml(post.authorAvatar)}" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
               <div>
                 <h4 class="text-xs font-bold text-white hover:underline">${escapeHtml(post.authorName)}</h4>
@@ -1876,26 +2449,120 @@
           ${mediaHTML}
 
           <div class="flex items-center gap-4 pt-2 border-t border-slate-900 text-xs text-slate-400">
-            <button onclick="toggleLike('${postId}')" class="flex items-center gap-1.5 transition ${isLiked ? 'text-pink-500 font-bold' : 'hover:text-pink-400'}">
+            <button onclick="event.stopPropagation(); toggleLike('${postId}')" title="${likesCount > 0 ? t('postLikedByCount', { n: likesCount }) : ''}" class="flex items-center gap-1.5 transition ${isLiked ? 'text-pink-500 font-bold' : 'hover:text-pink-400'}">
               <i class="${isLiked ? 'fa-solid' : 'fa-regular'} fa-heart text-sm"></i>
-              <span>${likesCount}</span>
+              <span>${formatCount(likesCount)}</span>
             </button>
-            <button onclick="toggleCommentsSection('${postId}')" class="flex items-center gap-1.5 hover:text-cyan-400 transition">
+            <span class="flex items-center gap-1.5">
               <i class="fa-regular fa-comment text-sm"></i>
-              <span>التعليقات</span>
+              <span>${commentsCount > 0 ? formatCount(commentsCount) + ' ' : ''}${t('postComments')}</span>
+            </span>
+          </div>
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // 🔍 نافذة "عرض المنشور" — تُفتح عند الضغط على أي منشور من الصفحة
+    // الرئيسية أو البروفايل. من داخلها فقط يقدر المستخدم يضغط لايك ويكتب
+    // تعليقه، بدل ما تكون هذه الصناديق مفتوحة ومثقّلة داخل القائمة نفسها.
+    // ============================================================
+    let activePostViewId = null;
+    let activePostViewUnsubscribe = null;
+
+    function openPostView(postId) {
+      const user = auth.currentUser;
+      if (!user || !postId) return;
+
+      activePostViewId = postId;
+      document.getElementById('modal-post-view').classList.remove('hidden');
+
+      const bodyEl = document.getElementById('post-view-body');
+      bodyEl.innerHTML = `<div class="text-center py-8 text-slate-500 text-xs animate-pulse">جاري التحميل...</div>`;
+      document.getElementById('post-view-comments-list').innerHTML = `<div class="text-slate-500 text-center py-1 text-[10px]">${t('postLoadingComments')}</div>`;
+
+      const commentInput = document.getElementById('post-view-comment-input');
+      if (commentInput) { commentInput.value = ''; commentInput.placeholder = t('postCommentPlaceholder'); }
+
+      if (activePostViewUnsubscribe) { activePostViewUnsubscribe(); activePostViewUnsubscribe = null; }
+
+      activePostViewUnsubscribe = db.collection('posts').doc(postId).onSnapshot(doc => {
+        if (activePostViewId !== postId) return;
+        if (!doc.exists) {
+          showToast('⚠️ هذا المنشور لم يعد موجوداً', 'info');
+          closePostView();
+          return;
+        }
+        renderPostViewBody(postId, doc.data(), user.uid);
+      }, err => {
+        console.error("❌ خطأ في تحميل المنشور:", err);
+        bodyEl.innerHTML = `<div class="text-center py-8 text-red-400 text-[11px]">تعذر تحميل المنشور: ${escapeHtml(err.message)}</div>`;
+      });
+
+      loadComments(postId);
+    }
+
+    function closePostView() {
+      if (activePostViewUnsubscribe) { activePostViewUnsubscribe(); activePostViewUnsubscribe = null; }
+      if (activePostViewId && activeCommentsUnsubscribe[activePostViewId]) {
+        activeCommentsUnsubscribe[activePostViewId]();
+        activeCommentsUnsubscribe[activePostViewId] = null;
+      }
+      activePostViewId = null;
+      document.getElementById('modal-post-view').classList.add('hidden');
+    }
+
+    function renderPostViewBody(postId, post, userId) {
+      const bodyEl = document.getElementById('post-view-body');
+      if (!bodyEl) return;
+
+      const isLiked = (post.likes || []).includes(userId);
+      const likesCount = typeof post.likesCount === 'number' ? post.likesCount : (post.likes || []).length;
+      const isOwner = post.uid === userId;
+
+      let mediaHTML = '';
+      if (post.media && post.media.url) {
+        const fileUrl = post.media.url;
+        mediaHTML = post.media.type === 'video'
+          ? `<div class="mt-2 rounded-2xl overflow-hidden border border-cyan-500/30 bg-slate-900"><video src="${escapeHtml(fileUrl)}" controls class="w-full max-h-80 object-cover"></video></div>`
+          : `<div class="mt-2 rounded-2xl overflow-hidden border border-cyan-500/30 bg-slate-900"><img src="${escapeHtml(fileUrl)}" class="w-full max-h-80 object-cover"></div>`;
+      }
+
+      let ownerActionsHTML = '';
+      if (isOwner) {
+        const safeContent = encodeURIComponent(post.content || '');
+        ownerActionsHTML = `
+          <div class="flex items-center gap-2">
+            <button onclick="openEditPostModal('${postId}', decodeURIComponent('${safeContent}'))" class="text-cyan-400 hover:text-white p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs transition" title="${t('postEdit')}">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="deletePost('${postId}'); closePostView();" class="text-red-400 hover:text-white p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs transition" title="${t('postDelete')}">
+              <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
+        `;
+      }
 
-          <div id="comments-box-${postId}" class="hidden space-y-2.5 pt-2 border-t border-slate-900/80">
-            <div id="comments-list-${postId}" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar text-[11px]">
-              <div class="text-slate-500 text-center py-1">جاري تحميل التعليقات...</div>
-            </div>
-            
-            <div class="flex gap-1.5 pt-1">
-              <input type="text" id="comment-input-${postId}" placeholder="اكتب تعليقاً للمتابعين..." class="flex-1 bg-slate-900 p-2 rounded-xl border border-slate-800 text-[11px] text-white focus:outline-none focus:border-cyan-400">
-              <button onclick="addComment('${postId}')" class="bg-cyan-500 text-black px-3 rounded-xl font-black text-xs"><i class="fa-solid fa-paper-plane"></i></button>
+      bodyEl.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3 cursor-pointer" onclick="closePostView(); ${isOwner ? 'viewMyOwnProfile()' : `viewUserProfile('${post.uid}')`}">
+            <img src="${escapeHtml(post.authorAvatar)}" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
+            <div>
+              <h4 class="text-xs font-bold text-white hover:underline">${escapeHtml(post.authorName)}</h4>
+              <p class="text-[9px] text-cyan-300/70 truncate max-w-[180px]">${escapeHtml(post.authorBio) || 'عضو في كَلِمَة'}</p>
             </div>
           </div>
+          ${ownerActionsHTML}
+        </div>
+
+        ${post.content ? `<p class="text-xs text-slate-200 leading-relaxed mt-3">${escapeHtml(post.content)}</p>` : ''}
+        ${mediaHTML}
+
+        <div class="flex items-center gap-4 pt-2 mt-2 border-t border-slate-900 text-xs text-slate-400">
+          <button onclick="toggleLike('${postId}')" title="${likesCount > 0 ? t('postLikedByCount', { n: likesCount }) : ''}" class="flex items-center gap-1.5 transition ${isLiked ? 'text-pink-500 font-bold' : 'hover:text-pink-400'}">
+            <i class="${isLiked ? 'fa-solid' : 'fa-regular'} fa-heart text-sm"></i>
+            <span>${formatCount(likesCount)}</span>
+          </button>
         </div>
       `;
     }
@@ -1918,7 +2585,11 @@
         await postRef.update({
           likes: alreadyLiked
             ? firebase.firestore.FieldValue.arrayRemove(user.uid)
-            : firebase.firestore.FieldValue.arrayUnion(user.uid)
+            : firebase.firestore.FieldValue.arrayUnion(user.uid),
+          // 🔧 عداد رقمي منفصل لعدد الإعجابات: يتيح عرض الرقم فوراً دون
+          // الحاجة لتحميل مصفوفة likes كاملة كل مرة (أسرع وأخف على الأداء
+          // خصوصاً عندما يصل المنشور لمئات أو آلاف الإعجابات).
+          likesCount: firebase.firestore.FieldValue.increment(alreadyLiked ? -1 : 1)
         });
 
         if (!alreadyLiked && postData.uid !== user.uid) {
@@ -1942,19 +2613,8 @@
     }
 
     // ============================================================
-    // 💬 دوال التعليقات
+    // 💬 دوال التعليقات (تعمل الآن داخل نافذة عرض المنشور فقط)
     // ============================================================
-    function toggleCommentsSection(postId) {
-      const box = document.getElementById(`comments-box-${postId}`);
-      box.classList.toggle('hidden');
-      if (!box.classList.contains('hidden')) {
-        loadComments(postId);
-      } else if (activeCommentsUnsubscribe[postId]) {
-        activeCommentsUnsubscribe[postId]();
-        activeCommentsUnsubscribe[postId] = null;
-      }
-    }
-
     function loadComments(postId) {
       if (activeCommentsUnsubscribe[postId]) {
         activeCommentsUnsubscribe[postId]();
@@ -1962,19 +2622,20 @@
       }
 
       activeCommentsUnsubscribe[postId] = db.collection('posts').doc(postId).collection('comments').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
-        const list = document.getElementById(`comments-list-${postId}`);
-        if (!list) {
-          if (activeCommentsUnsubscribe[postId]) { activeCommentsUnsubscribe[postId](); activeCommentsUnsubscribe[postId] = null; }
-          return;
-        }
-        list.innerHTML = '';
+        // إن أغلق المستخدم النافذة أو فتح منشوراً آخر قبل وصول هذا التحديث، نتجاهله
+        if (activePostViewId !== postId) return;
+        const list = document.getElementById('post-view-comments-list');
+        if (!list) return;
         if (snapshot.empty) {
-          list.innerHTML = '<div class="text-slate-500 text-center py-1 text-[10px]">لا توجد تعليقات بعد.. كن أول المعلقين!</div>';
+          list.innerHTML = `<div class="text-slate-500 text-center py-1 text-[10px]">${t('postNoComments')}</div>`;
           return;
         }
-        snapshot.forEach(doc => {
+        // 🔧 بناء كل التعليقات كسلسلة واحدة ثم كتابتها دفعة واحدة في الـ DOM
+        // بدل استخدام += داخل حلقة (كان يسبب إعادة تحليل/رسم كامل القائمة
+        // مع كل تعليق واحد يُضاف، وهو حمل غير ضروري كلما زاد عدد التعليقات)
+        const html = snapshot.docs.map(doc => {
           const c = doc.data();
-          list.innerHTML += `
+          return `
             <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex items-start gap-2">
               <img src="${escapeHtml(c.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user')}" class="w-6 h-6 rounded-lg object-cover border border-cyan-500/30">
               <div class="flex-1">
@@ -1985,7 +2646,8 @@
               </div>
             </div>
           `;
-        });
+        }).join('');
+        list.innerHTML = html;
       }, err => {
         console.error("❌ خطأ في تحميل التعليقات:", err);
       });
@@ -1993,22 +2655,29 @@
 
     async function addComment(postId) {
       const user = auth.currentUser;
-      if (!user || !currentUserProfile) return;
-      const input = document.getElementById(`comment-input-${postId}`);
+      if (!user || !currentUserProfile || !postId) return;
+      const input = document.getElementById('post-view-comment-input');
       const text = input.value.trim();
       if (!text) return;
 
       try {
-        await db.collection('posts').doc(postId).collection('comments').add({
+        const postRef = db.collection('posts').doc(postId);
+        await postRef.collection('comments').add({
           uid: user.uid,
           authorName: currentUserProfile.nickname,
           avatar: currentUserProfile.avatar,
           text: text,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        // 🔧 تحديث عداد التعليقات على المنشور نفسه (بدل الاعتماد على قراءة
+        // المجموعة الفرعية كل مرة)، ليظهر عدد المعلّقين فوراً على البطاقة
+        // تماماً مثل عداد الإعجابات (مثال: "12 تعليق").
+        await postRef.update({
+          commentsCount: firebase.firestore.FieldValue.increment(1)
+        }).catch(() => {});
         input.value = '';
 
-        const postDoc = await db.collection('posts').doc(postId).get();
+        const postDoc = await postRef.get();
         if (postDoc.exists) {
           const postData = postDoc.data();
           if (postData.uid !== user.uid) {
@@ -2087,7 +2756,10 @@
         menu.classList.add('hidden');
       }
     });
-    function toggleSidebar() { document.getElementById('sidebar-drawer').classList.toggle('translate-x-full'); }
+    // 🔧 القائمة الجانبية تنزلق الآن من الجهة الصحيحة تلقائياً حسب اتجاه
+    // اللغة الحالية (يمين مع اللغات RTL كالعربية، ويسار مع اللغات LTR
+    // كالإنجليزية) عبر كلاس CSS واحد بدل تثبيت الجهة على "يمين" دائماً
+    function toggleSidebar() { document.getElementById('sidebar-drawer').classList.toggle('drawer-open'); }
     function toggleAiChat() { document.getElementById('ai-chat-box').classList.toggle('hidden'); }
 
     function sendAiMessage() {
@@ -2198,14 +2870,24 @@
       updateTotalUnreadBadge(lastKnownUnreadMessages);
     }
 
+    // 🔒 إصلاح ثغرة تسريب بيانات حساسة: كانت هذه الدالة تخزّن وتُرجع وثيقة
+    // المستخدم بالكامل من Firestore — بما فيها رقم الجوال، تاريخ الميلاد،
+    // والجنس — رغم أنها تُستخدم فقط لعرض الاسم المستعار والصورة في قوائم
+    // المحادثات والمتابعين. الآن نستخرج فقط الحقول العامة الآمنة للعرض.
     async function getUserProfileCached(uid) {
       if (userProfileCache.has(uid)) {
         return userProfileCache.get(uid);
       }
       const userDoc = await db.collection('users').doc(uid).get();
-      const data = userDoc.exists ? userDoc.data() : { nickname: 'مستخدم كَلِمَة', username: '', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=user' };
-      userProfileCache.set(uid, data);
-      return data;
+      const raw = userDoc.exists ? userDoc.data() : {};
+      const safeData = {
+        nickname: raw.nickname || 'مستخدم كَلِمَة',
+        username: raw.username || '',
+        avatar: raw.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user',
+        bio: raw.bio || ''
+      };
+      userProfileCache.set(uid, safeData);
+      return safeData;
     }
 
     async function sendChatMessage() {
@@ -2326,7 +3008,7 @@
         if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
 
         if (isPendingForMe) {
-          document.getElementById('chat-messages-container').innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">وافق أولاً لعرض محتوى الرسالة 🔒</div>';
+          document.getElementById('chat-messages-container').innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">${t('chatApproveFirst')}</div>`;
           return;
         }
 
@@ -2334,7 +3016,7 @@
           const container = document.getElementById('chat-messages-container');
           container.innerHTML = '';
           if (snapshot.empty) {
-            container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">ابدأ المحادثة الآن، أرسل أول رسالة! 💬</div>';
+            container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">${t('chatStartNow')}</div>`;
           } else {
             snapshot.forEach(doc => {
               const msg = doc.data();
@@ -2399,7 +3081,7 @@
           });
 
           if (visibleDocs.length === 0) {
-            container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد محادثات بعد.. ابحث عن صديق وابدأ الدردشة!</div>';
+            container.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">${t('chatNoChatsYet')}</div>`;
             updateTotalUnreadBadge(0);
             return;
           }
@@ -2451,6 +3133,9 @@
           document.getElementById('chats-list-container').innerHTML = `<div class="text-center py-4 text-red-400 text-[11px]">تعذر تحميل المحادثات: ${err.message}</div>`;
         });
     }
+
+    // 🌐 تفعيل نظام اللغات ورموز الدول فور تحميل الصفحة
+    initLanguageAndCountrySystem();
 
     console.log("✅ تم تحميل تطبيق كَلِمَة بنجاح");
   </script>
