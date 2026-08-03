@@ -2360,16 +2360,32 @@
     function loadProfilePosts(userId) {
       if (activeProfilePostsUnsubscribe) { activeProfilePostsUnsubscribe(); activeProfilePostsUnsubscribe = null; }
 
-      activeProfilePostsUnsubscribe = db.collection('posts').where('uid', '==', userId).onSnapshot(snapshot => {
+      const currentUid = auth.currentUser ? auth.currentUser.uid : null;
+      const isOwnProfile = currentUid === userId;
+
+      // 🔒🐞 إصلاح حرج مرتبط بقواعد أمان Firestore الجديدة: عند فتح بروفايل
+      // شخص آخر، كان الاستعلام يطلب where('uid','==',userId) فقط بلا أي شرط
+      // على isPrivate. Firestore لا يستطيع التأكد وقت تنفيذ الاستعلام (قبل
+      // معرفة النتائج) أن كل منشور مطابق سيمر من قاعدة الأمان (لأنها تشترط
+      // isPrivate==false لغير المالك) — فيرفض الاستعلام بالكامل برسالة
+      // "Missing or insufficient permissions"، حتى لو كانت كل منشورات ذلك
+      // الشخص عامة فعلاً! الحل: نضيف نفس شرط isPrivate==false داخل الاستعلام
+      // نفسه عند عرض بروفايل شخص آخر، حتى تتطابق بنية الاستعلام مع قاعدة
+      // الأمان ويقدر Firestore يثبت صحته مسبقاً. أما بروفايلي أنا شخصياً
+      // فيبقى الاستعلام بلا هذا الشرط لأعرض كل منشوراتي (عامة وخاصة).
+      let query = db.collection('posts').where('uid', '==', userId);
+      if (!isOwnProfile) {
+        query = query.where('isPrivate', '==', false);
+      }
+
+      activeProfilePostsUnsubscribe = query.onSnapshot(snapshot => {
         if (activeProfileUid !== userId) return;
         const currentUid = auth.currentUser ? auth.currentUser.uid : null;
         const isOwnProfile = currentUid === userId;
         const container = document.getElementById('my-posts-container');
 
-        // 🔒 إصلاح ثغرة خصوصية: كانت هذه الدالة تعرض منشورات أي مستخدم آخر
-        // بما فيها منشوراته "الخاصة" لأي زائر يفتح بروفايله، لأن الاستعلام
-        // والعرض لم يكونا يتحققان من isPrivate إطلاقاً. الآن: المنشورات
-        // الخاصة لا تظهر إلا لصاحبها فقط.
+        // الفلترة هنا الآن مجرد طبقة حماية إضافية بالواجهة (الاستعلام أعلاه
+        // يضمنها فعلياً)، لا ضرر من إبقائها.
         const visibleDocs = snapshot.docs.filter(doc => isOwnProfile || !doc.data().isPrivate);
 
         document.getElementById('my-posts-count').innerText = visibleDocs.length;
