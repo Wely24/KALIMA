@@ -703,6 +703,7 @@
           <img id="chat-partner-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
           <span id="chat-partner-name" class="text-xs font-bold text-white">اسم المستخدم</span>
         </div>
+        <button onclick="deleteChatForMe(activeChatId)" title="حذف المحادثة" class="text-slate-400 hover:text-red-400 transition px-2"><i class="fa-solid fa-trash-can"></i></button>
       </div>
       <div id="chat-pending-banner" class="hidden bg-pink-500/10 border-b border-pink-500/30 p-3 space-y-2">
         <p class="text-[11px] text-pink-300 text-center">📩 هذه رسالة من مستخدم لا تتابعه، هل توافق على فتحها؟</p>
@@ -715,6 +716,10 @@
         <p class="text-[10px] text-cyan-300 text-center">⏳ بانتظار موافقة الطرف الآخر على طلب الرسالة</p>
       </div>
       <div id="chat-messages-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2.5"></div>
+      <div id="chat-edit-banner" class="hidden px-3 pt-2 bg-slate-950/80 flex items-center justify-between">
+        <span class="text-[10px] text-cyan-300"><i class="fa-solid fa-pen ml-1"></i> جاري تعديل الرسالة</span>
+        <button onclick="cancelEditMessage()" class="text-[10px] text-slate-400 hover:text-white">إلغاء ✖</button>
+      </div>
       <div id="chat-input-bar" class="p-3 border-t border-slate-800 flex gap-2 items-center bg-slate-950/80">
         <input type="text" id="chat-message-input" placeholder="اكتب رسالتك..." onkeydown="if(event.key==='Enter') sendChatMessage();" class="flex-1 bg-slate-900 p-3 rounded-2xl border border-slate-800 text-xs text-white focus:outline-none focus:border-cyan-400">
         <button onclick="sendChatMessage()" class="bg-cyan-500 text-black w-10 h-10 rounded-2xl font-black flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
@@ -817,6 +822,7 @@
     let activeChatUnsubscribe = null;
     let activeChatId = null;
     let activeChatPartnerUid = null;
+    let editingMessageId = null; // 🆔 معرّف الرسالة التي يتم تعديلها حالياً (null = وضع إرسال عادي)
     let notificationsUnsubscribe = null;
     let notificationsListenerUnsubscribe = null;
     let lastHandledNotificationTime = Date.now();
@@ -1773,8 +1779,8 @@
           try {
             const reqDoc = await db.collection('friendRequests').doc(getRequestId(user.uid, uid)).get();
             const isPending = reqDoc.exists && reqDoc.data().status === 'pending';
+            // 🔓 الزر يبقى قابلاً للضغط في حالة الانتظار أيضاً، حتى يمكن سحب الطلب المعلّق
             followLabel.textContent = isPending ? 'الطلب معلّق...' : 'إضافة صديق';
-            followBtn.disabled = isPending;
           } catch (e) {
             followLabel.textContent = 'إضافة صديق';
           }
@@ -1787,55 +1793,105 @@
       switchMainTab('profile');
     }
 
+    // ============================================================
+    // 🔁 منطق مشترك للمتابعة/إلغاء المتابعة/سحب الطلب المعلّق
+    // (يُستخدم من زر البروفايل ومن أزرار قائمة المتابعين/يتابع)
+    // ============================================================
+
+    // يحدّد حالة علاقتي بمستخدم معيّن: following / pending / none
+    async function getFollowRelationStatus(targetUid) {
+      const user = auth.currentUser;
+      if (!user || targetUid === user.uid) return 'self';
+      try {
+        const targetDoc = await db.collection('users').doc(targetUid).get();
+        const isFollowing = targetDoc.exists && (targetDoc.data().followers || []).includes(user.uid);
+        if (isFollowing) return 'following';
+        const reqDoc = await db.collection('friendRequests').doc(getRequestId(user.uid, targetUid)).get();
+        if (reqDoc.exists && reqDoc.data().status === 'pending') return 'pending';
+        return 'none';
+      } catch (e) {
+        return 'none';
+      }
+    }
+
+    function followBtnLabel(status) {
+      if (status === 'following') return 'إلغاء المتابعة';
+      if (status === 'pending') return 'الطلب معلّق...';
+      return 'إضافة صديق';
+    }
+
+    // ينفّذ الإجراء المناسب حسب الحالة الحالية ويرجع الحالة الجديدة:
+    // following -> إلغاء متابعة | pending -> سحب الطلب | none -> إرسال طلب
+    async function performFollowToggle(targetUid) {
+      const user = auth.currentUser;
+      if (!user || !targetUid || targetUid === user.uid) return null;
+
+      const targetRef = db.collection('users').doc(targetUid);
+      const targetDoc = await targetRef.get();
+      if (!targetDoc.exists) return null;
+      const isFollowing = (targetDoc.data().followers || []).includes(user.uid);
+
+      if (isFollowing) {
+        const myRef = db.collection('users').doc(user.uid);
+        const batch = db.batch();
+        batch.update(targetRef, { followers: firebase.firestore.FieldValue.arrayRemove(user.uid) });
+        batch.update(myRef, { following: firebase.firestore.FieldValue.arrayRemove(targetUid) });
+        await batch.commit();
+        return 'none';
+      }
+
+      const requestId = getRequestId(user.uid, targetUid);
+      const requestRef = db.collection('friendRequests').doc(requestId);
+      const existingReq = await requestRef.get();
+
+      if (existingReq.exists && existingReq.data().status === 'pending') {
+        // 🔙 سحب الطلب المعلّق (كان قبل التعديل غير ممكن لأن الزر كان مُعطّلاً)
+        await requestRef.delete();
+        showToast('تم سحب طلب الصداقة', 'info');
+        return 'none';
+      }
+
+      const myNick = currentUserProfile ? currentUserProfile.nickname : 'مستخدم';
+      const myAvatar = currentUserProfile ? currentUserProfile.avatar : '';
+      await requestRef.set({
+        fromUid: user.uid,
+        fromName: myNick,
+        fromAvatar: myAvatar,
+        toUid: targetUid,
+        status: 'pending',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      await sendNotificationToUser(targetUid, `أرسل ${myNick} طلب إضافة صداقة 🤝`, 'friend_request', { requestId });
+      showToast('تم إرسال طلب الصداقة، بانتظار الموافقة ⏳', 'friend');
+      return 'pending';
+    }
+
     async function toggleFollowUser() {
       const user = auth.currentUser;
       if (!user || !activeProfileUid || activeProfileUid === user.uid) return;
       const targetUid = activeProfileUid;
+      const followBtn = document.getElementById('follow-toggle-btn');
+      const followLabel = document.getElementById('follow-toggle-label');
 
+      if (followBtn) followBtn.disabled = true;
       try {
-        const targetRef = db.collection('users').doc(targetUid);
-        const targetDoc = await targetRef.get();
-        if (!targetDoc.exists) return;
-        const isFollowing = (targetDoc.data().followers || []).includes(user.uid);
+        const newStatus = await performFollowToggle(targetUid);
+        if (newStatus === null) return;
 
-        if (isFollowing) {
-          const myRef = db.collection('users').doc(user.uid);
-          const batch = db.batch();
-          batch.update(targetRef, { followers: firebase.firestore.FieldValue.arrayRemove(user.uid) });
-          batch.update(myRef, { following: firebase.firestore.FieldValue.arrayRemove(targetUid) });
-          await batch.commit();
-          return;
+        if (followLabel) followLabel.textContent = followBtnLabel(newStatus);
+        if (followBtn) {
+          const isFollowing = newStatus === 'following';
+          followBtn.classList.toggle('from-cyan-500', !isFollowing);
+          followBtn.classList.toggle('to-blue-600', !isFollowing);
+          followBtn.classList.toggle('from-slate-700', isFollowing);
+          followBtn.classList.toggle('to-slate-800', isFollowing);
         }
-
-        const requestId = getRequestId(user.uid, targetUid);
-        const requestRef = db.collection('friendRequests').doc(requestId);
-        const existingReq = await requestRef.get();
-        if (existingReq.exists && existingReq.data().status === 'pending') {
-          showToast('طلب الصداقة قيد الانتظار بالفعل ⏳', 'friend');
-          return;
-        }
-
-        const myNick = currentUserProfile ? currentUserProfile.nickname : 'مستخدم';
-        const myAvatar = currentUserProfile ? currentUserProfile.avatar : '';
-        await requestRef.set({
-          fromUid: user.uid,
-          fromName: myNick,
-          fromAvatar: myAvatar,
-          toUid: targetUid,
-          status: 'pending',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await sendNotificationToUser(targetUid, `أرسل ${myNick} طلب إضافة صداقة 🤝`, 'friend_request', { requestId });
-        showToast('تم إرسال طلب الصداقة، بانتظار الموافقة ⏳', 'friend');
-
-        const followBtn = document.getElementById('follow-toggle-btn');
-        const followLabel = document.getElementById('follow-toggle-label');
-        if (followLabel) followLabel.textContent = 'الطلب معلّق...';
-        if (followBtn) followBtn.disabled = true;
       } catch (err) { 
         console.error("❌ خطأ في متابعة المستخدم:", err);
         alert('حدث خطأ: ' + err.message);
+      } finally {
+        if (followBtn) followBtn.disabled = false;
       }
     }
 
@@ -1863,8 +1919,16 @@
       document.getElementById('modal-follow-list').classList.add('hidden');
     }
 
+    // تحدّد شكل/لون زر المتابعة داخل صفوف القائمة حسب الحالة
+    function followListBtnClasses(status) {
+      if (status === 'following') return 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white hover:border-red-500/50';
+      if (status === 'pending') return 'bg-slate-800 text-cyan-300 border border-cyan-500/30';
+      return 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black border border-transparent';
+    }
+
     async function renderFollowList(uids) {
       const container = document.getElementById('follow-list-container');
+      const myUid = auth.currentUser ? auth.currentUser.uid : null;
       if (!uids || uids.length === 0) {
         container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا توجد حسابات لعرضها حالياً</div>';
         return;
@@ -1872,19 +1936,51 @@
 
       container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs animate-pulse">جاري التحميل...</div>';
       try {
-        const profiles = await Promise.all(uids.map(async uid => ({ uid, data: await getUserProfileCached(uid) })));
+        const profiles = await Promise.all(uids.map(async uid => {
+          const [data, status] = await Promise.all([
+            getUserProfileCached(uid),
+            uid === myUid ? Promise.resolve('self') : getFollowRelationStatus(uid)
+          ]);
+          return { uid, data, status };
+        }));
         container.innerHTML = profiles.map(p => `
-          <div onclick="viewUserProfile('${p.uid}'); closeFollowListModal();" class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2.5 cursor-pointer hover:border-cyan-500/50 transition">
-            <img src="${escapeHtml(p.data.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user')}" class="w-9 h-9 rounded-xl border border-cyan-400/50 bg-slate-950 object-cover">
-            <div class="min-w-0">
-              <p class="text-xs font-bold text-white truncate">${escapeHtml(p.data.nickname || 'مستخدم كَلِمَة')}</p>
-              <p class="text-[10px] text-cyan-300/70 truncate">@${escapeHtml(p.data.username || '')}</p>
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2.5">
+            <div onclick="viewUserProfile('${p.uid}'); closeFollowListModal();" class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition">
+              <img src="${escapeHtml(p.data.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user')}" class="w-9 h-9 rounded-xl border border-cyan-400/50 bg-slate-950 object-cover shrink-0">
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-white truncate">${escapeHtml(p.data.nickname || 'مستخدم كَلِمَة')}</p>
+                <p class="text-[10px] text-cyan-300/70 truncate">@${escapeHtml(p.data.username || '')}</p>
+              </div>
             </div>
+            ${p.status === 'self' ? '' : `
+            <button onclick="handleFollowListToggle(this, '${p.uid}')" data-status="${p.status}" class="shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full transition ${followListBtnClasses(p.status)}">${followBtnLabel(p.status)}</button>
+            `}
           </div>
         `).join('');
       } catch (err) {
         console.error("❌ خطأ في تحميل قائمة المتابعين:", err);
         container.innerHTML = `<div class="text-center py-4 text-red-400 text-[11px]">تعذر تحميل القائمة: ${err.message}</div>`;
+      }
+    }
+
+    // 🔘 يُنفَّذ عند الضغط على زر المتابعة داخل صف بقائمة المتابعين/يتابع
+    async function handleFollowListToggle(btnEl, targetUid) {
+      if (btnEl.disabled) return;
+      btnEl.disabled = true;
+      const originalText = btnEl.textContent;
+      btnEl.textContent = '...';
+      try {
+        const newStatus = await performFollowToggle(targetUid);
+        if (newStatus === null) { btnEl.textContent = originalText; return; }
+        btnEl.dataset.status = newStatus;
+        btnEl.textContent = followBtnLabel(newStatus);
+        btnEl.className = `shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full transition ${followListBtnClasses(newStatus)}`;
+      } catch (err) {
+        console.error("❌ خطأ في تحديث حالة المتابعة:", err);
+        alert('حدث خطأ: ' + err.message);
+        btnEl.textContent = originalText;
+      } finally {
+        btnEl.disabled = false;
       }
     }
 
@@ -2919,8 +3015,37 @@
       const text = input.value.trim();
       if (!user || !activeChatId || !activeChatPartnerUid || !text) return;
 
-      input.value = '';
       const chatRef = db.collection('chats').doc(activeChatId);
+
+      // ✏️ وضع تعديل رسالة موجودة: نحدّث الرسالة بدل إرسال رسالة جديدة
+      if (editingMessageId) {
+        const msgId = editingMessageId;
+        input.value = '';
+        cancelEditMessage();
+        try {
+          const msgRef = chatRef.collection('messages').doc(msgId);
+          const msgDoc = await msgRef.get();
+          if (!msgDoc.exists || msgDoc.data().senderId !== user.uid) return;
+
+          await msgRef.update({
+            text: text,
+            edited: true,
+            editedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          // إذا كانت هذه آخر رسالة في المحادثة، حدّث المعاينة في قائمة المحادثات
+          const lastSnap = await chatRef.collection('messages').orderBy('createdAt', 'desc').limit(1).get();
+          if (!lastSnap.empty && lastSnap.docs[0].id === msgId) {
+            await chatRef.update({ lastMessage: text });
+          }
+        } catch (err) {
+          console.error("❌ خطأ في تعديل الرسالة:", err);
+          alert('حدث خطأ: ' + err.message);
+        }
+        return;
+      }
+
+      input.value = '';
 
       try {
         await chatRef.collection('messages').add({
@@ -2934,7 +3059,9 @@
         await chatRef.update({
           lastMessage: text,
           lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-          [`unreadCounts.${activeChatPartnerUid}`]: firebase.firestore.FieldValue.increment(1)
+          [`unreadCounts.${activeChatPartnerUid}`]: firebase.firestore.FieldValue.increment(1),
+          // 🔄 إن كان الطرف الآخر قد حذف المحادثة من قائمته سابقاً، تُعيد رسالتي الجديدة إظهارها له
+          hiddenFor: firebase.firestore.FieldValue.arrayRemove(activeChatPartnerUid)
         });
 
         const senderNick = currentUserProfile ? currentUserProfile.nickname : 'شخص ما';
@@ -2945,6 +3072,129 @@
 
       } catch (err) {
         console.error("❌ خطأ في إرسال الرسالة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
+    }
+
+    // ============================================================
+    // 🗑️✏️ حذف/تعديل الرسائل + حذف المحادثة (من جهة أو من الطرفين)
+    // ============================================================
+
+    // إغلاق قائمة خيارات الرسالة المنبثقة
+    function closeMessageMenu() {
+      const existing = document.getElementById('message-action-menu');
+      if (existing) existing.remove();
+      document.removeEventListener('click', closeMessageMenu, true);
+    }
+
+    // فتح قائمة خيارات صغيرة بجانب الرسالة (تعديل / حذف عندي / حذف لدى الطرفين)
+    function openMessageMenu(event, chatId, messageId, isMine, text, isDeletedForEveryone) {
+      event.stopPropagation();
+      closeMessageMenu();
+
+      const menu = document.createElement('div');
+      menu.id = 'message-action-menu';
+      menu.className = 'fixed z-[60] bg-slate-950/95 border border-cyan-500/30 rounded-xl shadow-lg backdrop-blur-md py-1.5 min-w-[150px] text-xs fade-in';
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      let top = rect.bottom + 6;
+      let left = rect.left;
+      if (left + 155 > window.innerWidth) left = window.innerWidth - 160;
+      if (left < 5) left = 5;
+      menu.style.top = top + 'px';
+      menu.style.left = left + 'px';
+
+      let itemsHtml = '';
+      if (isMine && !isDeletedForEveryone) {
+        itemsHtml += `<button onclick="closeMessageMenu(); startEditMessage('${messageId}', '${escapeForInlineJs(text)}')" class="w-full text-right px-3 py-2 text-cyan-300 hover:bg-cyan-500/10 transition flex items-center gap-2"><i class="fa-solid fa-pen text-[10px] w-3"></i> تعديل</button>`;
+        itemsHtml += `<button onclick="closeMessageMenu(); deleteMessageForEveryone('${chatId}', '${messageId}')" class="w-full text-right px-3 py-2 text-red-400 hover:bg-red-500/10 transition flex items-center gap-2"><i class="fa-solid fa-trash-can text-[10px] w-3"></i> حذف لدى الطرفين</button>`;
+      }
+      itemsHtml += `<button onclick="closeMessageMenu(); deleteMessageForMe('${chatId}', '${messageId}')" class="w-full text-right px-3 py-2 text-slate-300 hover:bg-slate-800 transition flex items-center gap-2"><i class="fa-solid fa-eye-slash text-[10px] w-3"></i> حذف عندي فقط</button>`;
+
+      menu.innerHTML = itemsHtml;
+      document.body.appendChild(menu);
+
+      setTimeout(() => document.addEventListener('click', closeMessageMenu, true), 0);
+    }
+
+    // 👁️‍🗨️ حذف الرسالة من عندي فقط (تبقى ظاهرة للطرف الآخر)
+    async function deleteMessageForMe(chatId, messageId) {
+      const user = auth.currentUser;
+      if (!user || !chatId || !messageId) return;
+      try {
+        await db.collection('chats').doc(chatId).collection('messages').doc(messageId)
+          .update({ deletedFor: firebase.firestore.FieldValue.arrayUnion(user.uid) });
+      } catch (err) {
+        console.error("❌ خطأ في حذف الرسالة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
+    }
+
+    // 🚫 حذف/سحب الرسالة لدى الطرفين (لا يمكن التراجع، متاح فقط لمرسل الرسالة)
+    async function deleteMessageForEveryone(chatId, messageId) {
+      if (!confirm('هل تريد سحب هذه الرسالة لدى الطرفين؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+      const user = auth.currentUser;
+      if (!user || !chatId || !messageId) return;
+
+      const chatRef = db.collection('chats').doc(chatId);
+      const msgRef = chatRef.collection('messages').doc(messageId);
+
+      try {
+        const msgDoc = await msgRef.get();
+        if (!msgDoc.exists || msgDoc.data().senderId !== user.uid) return;
+
+        await msgRef.update({
+          text: '',
+          deletedForEveryone: true,
+          deletedForEveryoneAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // تحديث معاينة آخر رسالة في قائمة المحادثات إن كانت هذه هي الأخيرة
+        const lastSnap = await chatRef.collection('messages').orderBy('createdAt', 'desc').limit(1).get();
+        if (!lastSnap.empty) {
+          const lastMsg = lastSnap.docs[0].data();
+          const previewText = lastMsg.deletedForEveryone ? '🚫 تم حذف رسالة' : lastMsg.text;
+          await chatRef.update({ lastMessage: previewText });
+        }
+      } catch (err) {
+        console.error("❌ خطأ في سحب الرسالة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
+    }
+
+    // ✏️ تفعيل وضع تعديل رسالة (يضع نصها في مربع الإدخال)
+    function startEditMessage(messageId, currentText) {
+      editingMessageId = messageId;
+      const input = document.getElementById('chat-message-input');
+      input.value = currentText;
+      input.focus();
+      const banner = document.getElementById('chat-edit-banner');
+      if (banner) banner.classList.remove('hidden');
+    }
+
+    // إلغاء وضع التعديل والعودة لوضع الإرسال العادي
+    function cancelEditMessage() {
+      editingMessageId = null;
+      const input = document.getElementById('chat-message-input');
+      if (input) input.value = '';
+      const banner = document.getElementById('chat-edit-banner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    // 🗑️ حذف كامل المحادثة من قائمتي فقط (لا يحذفها لدى الطرف الآخر)
+    async function deleteChatForMe(chatId) {
+      if (!chatId) return;
+      if (!confirm('هل تريد حذف هذه المحادثة من قائمتك؟ لن يتم حذفها لدى الطرف الآخر، وستظهر مجدداً إذا وصلتك رسالة جديدة.')) return;
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        await db.collection('chats').doc(chatId).update({
+          hiddenFor: firebase.firestore.FieldValue.arrayUnion(user.uid)
+        });
+        if (activeChatId === chatId) closeChatWindow();
+        showToast('✅ تم حذف المحادثة', 'info');
+      } catch (err) {
+        console.error("❌ خطأ في حذف المحادثة:", err);
         alert('حدث خطأ: ' + err.message);
       }
     }
@@ -3015,6 +3265,11 @@
         document.getElementById('chat-partner-avatar').src = targetAvatar;
         document.getElementById('modal-chat-window').classList.remove('hidden');
 
+        // 🔄 إذا كنت قد حذفت هذه المحادثة سابقاً من قائمتي، فتحها الآن يُعيدها للظهور
+        if ((chatData.hiddenFor || []).includes(user.uid)) {
+          chatRef.update({ hiddenFor: firebase.firestore.FieldValue.arrayRemove(user.uid) }).catch(() => {});
+        }
+
         document.getElementById('chat-pending-banner').classList.toggle('hidden', !isPendingForMe);
         document.getElementById('chat-waiting-banner').classList.toggle('hidden', !isWaitingForOther);
         document.getElementById('chat-input-bar').classList.toggle('hidden', isPendingForMe);
@@ -3038,17 +3293,34 @@
         activeChatUnsubscribe = chatRef.collection('messages').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
           const container = document.getElementById('chat-messages-container');
           container.innerHTML = '';
-          if (snapshot.empty) {
+
+          // 👁️‍🗨️ استبعاد الرسائل التي حذفها المستخدم الحالي "عندي فقط"
+          const visibleMsgDocs = snapshot.docs.filter(doc => {
+            const msg = doc.data();
+            return !((msg.deletedFor || []).includes(user.uid));
+          });
+
+          if (visibleMsgDocs.length === 0) {
             container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">${t('chatStartNow')}</div>`;
           } else {
-            snapshot.forEach(doc => {
+            visibleMsgDocs.forEach(doc => {
               const msg = doc.data();
               const isMine = msg.senderId === user.uid;
+              const isDeletedForEveryone = !!msg.deletedForEveryone;
+
+              const bodyHtml = isDeletedForEveryone
+                ? `<span class="italic text-slate-500"><i class="fa-solid fa-ban ml-1"></i> تم حذف هذه الرسالة</span>`
+                : `${escapeHtml(msg.text)}${msg.edited ? '<span class="text-[9px] opacity-60 mr-1">(معدّلة)</span>' : ''}`;
+
+              const menuBtn = `<button onclick="openMessageMenu(event, '${chatId}', '${doc.id}', ${isMine}, '${escapeForInlineJs(msg.text || '')}', ${isDeletedForEveryone})" class="self-center text-slate-500 hover:text-cyan-300 px-1 transition"><i class="fa-solid fa-ellipsis-vertical text-[10px]"></i></button>`;
+
               container.innerHTML += `
-                <div class="flex ${isMine ? 'justify-start' : 'justify-end'}">
+                <div class="flex items-center gap-1 ${isMine ? 'justify-start' : 'justify-end'}">
+                  ${isMine ? menuBtn : ''}
                   <div class="max-w-[75%] px-3 py-2 rounded-2xl text-xs ${isMine ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black rounded-br-none' : 'bg-slate-900 text-white border border-slate-800 rounded-bl-none'}">
-                    ${escapeHtml(msg.text)}
+                    ${bodyHtml}
                   </div>
+                  ${!isMine ? menuBtn : ''}
                 </div>`;
             });
             container.scrollTop = container.scrollHeight;
@@ -3076,6 +3348,8 @@
       if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
       activeChatId = null;
       activeChatPartnerUid = null;
+      cancelEditMessage();
+      closeMessageMenu();
       document.getElementById('modal-chat-window').classList.add('hidden');
     }
 
@@ -3096,6 +3370,7 @@
             const c = doc.data();
             if (c.status === 'rejected') return false;
             if (c.status === 'pending' && c.initiatedBy !== user.uid) return false;
+            if ((c.hiddenFor || []).includes(user.uid)) return false; // 🗑️ محادثة محذوفة من قِبلي
             return true;
           }).sort((a, b) => {
             const aTime = a.data().lastMessageAt ? a.data().lastMessageAt.toMillis() : 0;
@@ -3144,7 +3419,10 @@
                     <p class="text-[10px] text-slate-400 truncate max-w-[140px]">${escapeHtml(chat.lastMessage) || 'ابدأ المحادثة الآن'}</p>
                   </div>
                 </div>
-                ${pendingTag}
+                <div class="flex items-center gap-2">
+                  ${pendingTag}
+                  <button onclick="event.stopPropagation(); deleteChatForMe('${doc.id}')" title="حذف المحادثة" class="text-slate-500 hover:text-red-400 transition px-1"><i class="fa-solid fa-trash-can text-[11px]"></i></button>
+                </div>
               </div>`;
           }));
 
