@@ -3483,9 +3483,9 @@
 
     // 🕓 وصف مختصر لكل وضع من أوضاع حذف المحادثة الثلاثة، يُعرض تحت الأزرار
     const AUTO_DELETE_DESCRIPTIONS = {
-      after_view: 'تُحذف رسائل هذه المحادثة من عندك تلقائياً بمجرد مشاهدتها والخروج من نافذة المحادثة.',
+      after_view: 'الرسائل التي تصلك من الطرف الآخر تُحذف من عندك تلقائياً بمجرد مشاهدتها وخروجك من المحادثة. رسائلك أنت المُرسَلة تبقى محفوظة عندك وعنده حتى يشاهدها هو ويخرج من طرفه.',
       never: 'لا تُحذف الرسائل تلقائياً أبداً، وتبقى محفوظة عندك حتى تحذفها بنفسك.',
-      '24h_after_view': 'تُحذف كل رسالة من عندك تلقائياً بعد مرور 24 ساعة على مشاهدتك لها.'
+      '24h_after_view': 'الرسائل التي تصلك من الطرف الآخر تُحذف من عندك تلقائياً بعد 24 ساعة من مشاهدتها. رسائلك أنت المُرسَلة لا تتأثر بهذا الإعداد.'
     };
 
     function renderAutoDeleteChips(activeMode) {
@@ -3548,8 +3548,11 @@
       }
     }
 
-    // 👁️ يعلّم كل رسالة مرئية حالياً (غير محذوفة عندي) بأنها شوهدت مني الآن
-    // إن لم تكن قد شوهدت من قبل — يُستخدم كأساس لوضعَي "بعد المشاهدة" و"24 ساعة"
+    // 👁️ يعلّم كل رسالة مرئية حالياً وصلتني من الطرف الآخر (وليست رسالتي أنا)
+    // بأنها شوهدت مني الآن، إن لم تكن قد شوهدت من قبل. لا نلمس رسائلي أنا
+    // المُرسَلة إطلاقاً — رسالتي تبقى موجودة عندي وعند الطرف الآخر إلى أن
+    // يشاهدها هو ويخرج، فمشاهدتي أنا لرسالتي الخاصة لا تعني شيئاً هنا —
+    // يُستخدم كأساس لوضعَي "بعد المشاهدة" و"24 ساعة"
     async function markVisibleMessagesAsViewed(chatId, uid) {
       try {
         const snap = await db.collection('chats').doc(chatId).collection('messages').get();
@@ -3558,6 +3561,7 @@
         let opCount = 0;
         snap.docs.forEach(doc => {
           const msg = doc.data();
+          if (msg.senderId === uid) return; // ⛔ لا نعلّم رسائلي أنا المُرسَلة كمُشاهَدة
           if ((msg.deletedFor || []).includes(uid)) return;
           if (msg.viewedAt && msg.viewedAt[uid]) return;
           batch.update(doc.ref, { [`viewedAt.${uid}`]: firebase.firestore.FieldValue.serverTimestamp() });
@@ -3569,7 +3573,8 @@
       } catch (e) { console.error("❌ خطأ في تعليم الرسائل كمُشاهَدة:", e); }
     }
 
-    // 🧹 يحذف (عندي فقط) أي رسالة مضى على مشاهدتي لها 24 ساعة فأكثر —
+    // 🧹 يحذف (عندي فقط) أي رسالة وصلتني من الطرف الآخر ومضى على مشاهدتي
+    // لها 24 ساعة فأكثر — لا تُحذف رسائلي أنا المُرسَلة أبداً بهذه الطريقة
     // يُستدعى عند فتح المحادثة إذا كان وضعي فيها "24 ساعة بعد المشاهدة"
     async function purgeExpiredViewedMessages(chatId, uid) {
       try {
@@ -3580,6 +3585,7 @@
         let opCount = 0;
         snap.docs.forEach(doc => {
           const msg = doc.data();
+          if (msg.senderId === uid) return; // ⛔ لا نحذف رسائلي أنا المُرسَلة
           if ((msg.deletedFor || []).includes(uid)) return;
           const viewedTs = msg.viewedAt && msg.viewedAt[uid];
           if (!viewedTs || typeof viewedTs.toMillis !== 'function') return;
@@ -3595,8 +3601,9 @@
     }
 
     // 🚪 يُطبَّق عند فتح المحادثة: ينظّف أولاً أي رسالة منتهية الصلاحية (وضع
-    // 24 ساعة)، ثم يعلّم الرسائل التي سأراها الآن كمُشاهَدة (إن كان أحد
-    // الوضعين مفعّلاً)، قبل عرض الرسائل للمستخدم
+    // 24 ساعة)، ثم يعلّم الرسائل التي وصلتني الآن كمُشاهَدة (إن كان أحد
+    // الوضعين مفعّلاً)، قبل عرض الرسائل للمستخدم — كل هذا يخص فقط الرسائل
+    // القادمة من الطرف الآخر، لا رسائلي أنا
     async function applyAutoDeletePolicyOnOpen(chatId, uid) {
       try {
         const chatDoc = await db.collection('chats').doc(chatId).get();
@@ -3611,8 +3618,10 @@
     }
 
     // 🚪 يُطبَّق عند إغلاق نافذة المحادثة: إن كان وضعي "بعد المشاهدة"، تُحذف
-    // كل رسالة كنت قد شاهدتها للتو (عندي فقط) فور خروجي، كرسائل مؤقتة تختفي
-    // بعد قراءتها ولا تبقى محفوظة عندي إطلاقاً
+    // (عندي فقط) الرسائل التي وصلتني من الطرف الآخر وشاهدتها للتو، فور
+    // خروجي — تماماً كخاصية سناب شات: رسالة الطرف الآخر تختفي من عندي أنا
+    // بعد ما أشاهدها وأخرج، لكن رسالتي أنا التي أرسلتها تبقى محفوظة عندي
+    // وعنده إلى أن يشاهدها هو بنفسه ويخرج من المحادثة من طرفه
     async function applyAutoDeletePolicyOnClose(chatId, uid) {
       try {
         const chatDoc = await db.collection('chats').doc(chatId).get();
@@ -3625,6 +3634,7 @@
         let opCount = 0;
         snap.docs.forEach(doc => {
           const msg = doc.data();
+          if (msg.senderId === uid) return; // ⛔ لا نحذف رسائلي أنا المُرسَلة عند خروجي
           if ((msg.deletedFor || []).includes(uid)) return;
           batch.update(doc.ref, { deletedFor: firebase.firestore.FieldValue.arrayUnion(uid) });
           opCount++;
