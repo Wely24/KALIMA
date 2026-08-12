@@ -351,6 +351,11 @@
       </div>
       
       <div class="flex items-center gap-2">
+        <button id="header-notif-btn" onclick="switchMainTab('likes')" class="relative text-cyan-300 hover:text-white p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-base" aria-label="الإشعارات والتفاعلات">
+          <i class="fa-solid fa-bell"></i>
+          <span id="header-notif-badge" class="hidden absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[8px] font-black min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-lg">0</span>
+        </button>
+
         <div class="relative">
           <button id="header-settings-btn" onclick="toggleHeaderSettingsMenu(event)" class="hidden text-purple-300 hover:text-white p-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 text-base" aria-label="إعدادات الملف الشخصي">
             <i class="fa-solid fa-gear"></i>
@@ -703,7 +708,7 @@
           <img id="chat-partner-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-9 h-9 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
           <span id="chat-partner-name" class="text-xs font-bold text-white">اسم المستخدم</span>
         </div>
-        <button onclick="deleteChatForMe(activeChatId)" title="حذف المحادثة" class="text-slate-400 hover:text-red-400 transition px-2"><i class="fa-solid fa-trash-can"></i></button>
+        <button onclick="openFriendPropertiesModal()" title="خصائص الصديق" class="text-slate-400 hover:text-cyan-300 transition px-2"><i class="fa-solid fa-ellipsis-vertical"></i></button>
       </div>
       <div id="chat-pending-banner" class="hidden bg-pink-500/10 border-b border-pink-500/30 p-3 space-y-2">
         <p class="text-[11px] text-pink-300 text-center">📩 هذه رسالة من مستخدم لا تتابعه، هل توافق على فتحها؟</p>
@@ -724,6 +729,116 @@
         <input type="text" id="chat-message-input" placeholder="اكتب رسالتك..." onkeydown="if(event.key==='Enter') sendChatMessage();" class="flex-1 bg-slate-900 p-3 rounded-2xl border border-slate-800 text-xs text-white focus:outline-none focus:border-cyan-400">
         <button onclick="sendChatMessage()" class="bg-cyan-500 text-black w-10 h-10 rounded-2xl font-black flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
+    </div>
+  </div>
+
+  <!-- 🧬 نافذة خصائص الصديق (تفتح من زر الثلاث نقاط داخل المحادثة) -->
+  <div id="modal-friend-properties" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-end md:items-center justify-center z-[60]" onclick="if(event.target===this) closeFriendPropertiesModal()">
+    <div class="holo-panel w-full md:max-w-sm rounded-t-[28px] md:rounded-3xl p-5 space-y-2 fade-in">
+      <div class="flex items-center gap-3 pb-3 border-b border-cyan-500/20">
+        <img id="fp-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-11 h-11 rounded-xl border border-cyan-400 bg-slate-900 object-cover">
+        <div class="flex-1 min-w-0">
+          <p class="text-[10px] text-cyan-300 font-bold">خصائص الصديق</p>
+          <p id="fp-name" class="text-xs text-white font-bold truncate">اسم المستخدم</p>
+        </div>
+        <button onclick="closeFriendPropertiesModal()" class="text-slate-400 hover:text-white shrink-0"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <button onclick="openFriendManagementPanel()" class="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-900/80 transition text-right">
+        <i class="fa-solid fa-user-gear text-cyan-400 w-5 text-center"></i>
+        <span class="text-xs text-white flex-1">إدارة الصداقة</span>
+        <i class="fa-solid fa-chevron-left text-slate-600 text-[10px]"></i>
+      </button>
+
+      <button onclick="openChatSettingsPanel()" class="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-900/80 transition text-right">
+        <i class="fa-solid fa-bell text-cyan-400 w-5 text-center"></i>
+        <span class="text-xs text-white flex-1">إعدادات الدردشة والإشعارات</span>
+        <i class="fa-solid fa-chevron-left text-slate-600 text-[10px]"></i>
+      </button>
+
+      <button onclick="openShareProfilePanel()" class="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-900/80 transition text-right">
+        <i class="fa-solid fa-share-nodes text-cyan-400 w-5 text-center"></i>
+        <span class="text-xs text-white flex-1">إرسال ملف تعريفي إلى شخص آخر</span>
+        <i class="fa-solid fa-chevron-left text-slate-600 text-[10px]"></i>
+      </button>
+
+      <button onclick="closeFriendPropertiesModal()" class="w-full py-2.5 rounded-2xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition mt-2">إغلاق</button>
+    </div>
+  </div>
+
+  <!-- 🤝 لوحة إدارة الصداقة -->
+  <div id="modal-friend-management" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-end md:items-center justify-center z-[60]" onclick="if(event.target===this) closeFriendManagementPanel()">
+    <div class="holo-panel w-full md:max-w-sm rounded-t-[28px] md:rounded-3xl p-5 space-y-2 fade-in">
+      <div class="flex items-center gap-2 pb-3 border-b border-cyan-500/20">
+        <button onclick="closeFriendManagementPanel(true)" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-arrow-right"></i></button>
+        <h3 class="text-xs font-bold text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-user-gear"></i> إدارة الصداقة</h3>
+      </div>
+
+      <button id="fp-unfriend-btn" onclick="handleUnfriendFromChat()" class="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-900/80 transition text-right">
+        <i class="fa-solid fa-user-xmark text-amber-400 w-5 text-center"></i>
+        <span class="text-xs text-white flex-1">إلغاء الصداقة</span>
+      </button>
+
+      <button id="fp-block-btn" onclick="handleBlockFromChat()" class="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-900/80 transition text-right">
+        <i class="fa-solid fa-ban text-red-400 w-5 text-center"></i>
+        <span id="fp-block-label" class="text-xs text-white flex-1">حظر المستخدم</span>
+      </button>
+
+      <button onclick="closeFriendManagementPanel(true)" class="w-full py-2.5 rounded-2xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition mt-2">رجوع</button>
+    </div>
+  </div>
+
+  <!-- 🔔 لوحة إعدادات الدردشة والإشعارات -->
+  <div id="modal-chat-settings" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-end md:items-center justify-center z-[60]" onclick="if(event.target===this) closeChatSettingsPanel()">
+    <div class="holo-panel w-full md:max-w-sm rounded-t-[28px] md:rounded-3xl p-5 space-y-2 fade-in">
+      <div class="flex items-center gap-2 pb-3 border-b border-cyan-500/20">
+        <button onclick="closeChatSettingsPanel(true)" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-arrow-right"></i></button>
+        <h3 class="text-xs font-bold text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-bell"></i> إعدادات الدردشة والإشعارات</h3>
+      </div>
+
+      <div class="w-full flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60">
+        <i class="fa-solid fa-bell-slash text-cyan-400 w-5 text-center"></i>
+        <span class="text-xs text-white flex-1">كتم إشعارات هذه المحادثة</span>
+        <button id="fp-mute-toggle" onclick="toggleChatMute()" class="w-11 h-6 rounded-full bg-slate-700 relative transition shrink-0">
+          <span id="fp-mute-dot" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-slate-300 transition-transform"></span>
+        </button>
+      </div>
+
+      <!-- ⏳ حذف المحادثة: سياسة تلقائية بدل الحذف اليدوي فقط -->
+      <div class="w-full p-3 rounded-2xl bg-slate-900/60 space-y-2.5">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-hourglass-half text-cyan-400 w-5 text-center"></i>
+          <span class="text-xs text-white flex-1">حذف المحادثة</span>
+        </div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button data-mode="after_view" onclick="setAutoDeleteMode('after_view')" class="fp-autodelete-chip text-[9px] font-bold py-2 px-1 rounded-xl border border-slate-700 text-slate-400 transition text-center leading-tight">بعد<br>المشاهدة</button>
+          <button data-mode="never" onclick="setAutoDeleteMode('never')" class="fp-autodelete-chip text-[9px] font-bold py-2 px-1 rounded-xl border border-slate-700 text-slate-400 transition text-center leading-tight">مطلقاً</button>
+          <button data-mode="24h_after_view" onclick="setAutoDeleteMode('24h_after_view')" class="fp-autodelete-chip text-[9px] font-bold py-2 px-1 rounded-xl border border-slate-700 text-slate-400 transition text-center leading-tight">24 ساعة بعد<br>المشاهدة</button>
+        </div>
+        <p id="fp-autodelete-desc" class="text-[9px] text-slate-500 leading-relaxed"></p>
+      </div>
+
+      <button onclick="closeChatSettingsPanel(); deleteChatForMe(activeChatId);" class="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-900/80 transition text-right">
+        <i class="fa-solid fa-trash-can text-red-400 w-5 text-center"></i>
+        <span class="text-xs text-white flex-1">حذف المحادثة الآن</span>
+      </button>
+
+      <button onclick="closeChatSettingsPanel(true)" class="w-full py-2.5 rounded-2xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition mt-2">رجوع</button>
+    </div>
+  </div>
+
+  <!-- 📇 لوحة إرسال ملف تعريفي إلى شخص آخر -->
+  <div id="modal-share-profile" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-end md:items-center justify-center z-[60]" onclick="if(event.target===this) closeShareProfilePanel()">
+    <div class="holo-panel w-full md:max-w-sm rounded-t-[28px] md:rounded-3xl p-5 space-y-3 max-h-[80vh] flex flex-col fade-in">
+      <div class="flex items-center gap-2 pb-3 border-b border-cyan-500/20 shrink-0">
+        <button onclick="closeShareProfilePanel(true)" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-arrow-right"></i></button>
+        <h3 class="text-xs font-bold text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-share-nodes"></i> إرسال إلى...</h3>
+      </div>
+      <p class="text-[10px] text-slate-400 -mt-1 shrink-0">اختر صديقاً لإرسال الملف التعريفي لهذا الشخص إليه</p>
+      <div id="share-profile-list" class="space-y-2 overflow-y-auto no-scrollbar flex-1">
+        <div class="text-center py-4 text-slate-500 text-xs animate-pulse">جاري التحميل...</div>
+      </div>
+      <button onclick="closeShareProfilePanel(true)" class="w-full py-2.5 rounded-2xl bg-slate-900 text-slate-400 text-xs font-bold hover:text-white transition shrink-0">رجوع</button>
     </div>
   </div>
 
@@ -844,6 +959,7 @@
     let incomingFriendRequestsCount = 0;
     let incomingMessageRequestsCount = 0;
     let lastKnownUnreadMessages = 0;
+    let unreadNotificationsCount = 0; // 🔔 عدد الإشعارات غير المقروءة (لايكات/تعليقات) لشارة الجرس العلوي
 
     // ذاكرة تخزين مؤقت عامة لبيانات المستخدمين (تُستخدم لقائمة المحادثات وقائمة
     // المتابعين/المتابَعين)، لتفادي إعادة جلب نفس البروفايل من Firestore بلا داعٍ
@@ -1074,6 +1190,7 @@
       // إعادة استدعائها هنا كانت تسبب إلغاء واشتراك القائمة وإعادة جلب بيانات
       // كل صديق محادثة من جديد على أي تغيّر بسيط، وهو حمل غير ضروري.
       updateTotalUnreadBadgeFromCache();
+      updateHeaderNotifBadge();
     }
 
     // 🔢 تنسيق الأعداد الكبيرة (إعجابات/تعليقات) بشكل مختصر ومقروء: 1.2K, 3.4M
@@ -1319,6 +1436,7 @@
         incomingFriendRequestsCount = 0;
         incomingMessageRequestsCount = 0;
         lastKnownUnreadMessages = 0;
+        unreadNotificationsCount = 0;
         userProfileCache.clear();
       }
     });
@@ -1418,6 +1536,7 @@
           senderId: auth.currentUser.uid,
           text: text,
           type: type,
+          read: false,
           ...extra,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -1447,6 +1566,10 @@
             const bTime = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
             return bTime - aTime;
           });
+
+          // 🔔 تحديث عدد الإشعارات غير المقروءة (لايكات/تعليقات) وشارة الجرس العلوي
+          unreadNotificationsCount = docs.filter(d => !d.data().read).length;
+          updateHeaderNotifBadge();
 
           if (docs.length === 0) {
             container.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">${t('notifNoneYet')}</div>`;
@@ -2849,6 +2972,58 @@
         btn.classList.toggle('text-cyan-400', isActive);
         btn.classList.toggle('text-slate-600', !isActive);
       });
+
+      // 🔔⚙️ التحكم بأيقونة الهيدر العلوية: جرس الإشعارات يظهر في الرئيسية فقط،
+      // وعلامة الإعدادات تظهر فقط داخل الملف الشخصي (تُدار من viewMyOwnProfile/viewUserProfile)
+      // وتُخفى تلقائياً في أي تبويب آخر (الدردشة/التفاعلات/الإكسبلور).
+      const notifBtn = document.getElementById('header-notif-btn');
+      if (tab === 'profile') {
+        if (notifBtn) notifBtn.classList.add('hidden');
+      } else {
+        const settingsBtn = document.getElementById('header-settings-btn');
+        if (settingsBtn) settingsBtn.classList.add('hidden');
+        if (notifBtn) notifBtn.classList.toggle('hidden', tab !== 'home');
+        if (tab === 'likes') markNotificationsAsRead();
+      }
+    }
+
+    // 🔔 تحديث شارة جرس الإشعارات العلوي بمجموع: إشعارات غير مقروءة (لايكات/تعليقات)
+    // + طلبات صداقة واردة + طلبات رسائل واردة + رسائل دردشة غير مقروءة
+    function updateHeaderNotifBadge() {
+      const badge = document.getElementById('header-notif-badge');
+      if (!badge) return;
+      const total = (unreadNotificationsCount || 0) + (incomingFriendRequestsCount || 0) + (incomingMessageRequestsCount || 0) + (lastKnownUnreadMessages || 0);
+      if (total > 0) {
+        badge.textContent = formatCount(total);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    // ✅ تعليم كل الإشعارات (لايكات/تعليقات) كمقروءة عند فتح صفحة التفاعلات
+    async function markNotificationsAsRead() {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        const snapshot = await db.collection('notifications')
+          .where('recipientId', '==', user.uid)
+          .limit(50)
+          .get();
+        const batch = db.batch();
+        let hasUnread = false;
+        snapshot.docs.forEach(doc => {
+          if (!doc.data().read) {
+            batch.update(doc.ref, { read: true });
+            hasUnread = true;
+          }
+        });
+        if (hasUnread) await batch.commit();
+        unreadNotificationsCount = 0;
+        updateHeaderNotifBadge();
+      } catch (err) {
+        console.error("❌ خطأ في تعليم الإشعارات كمقروءة:", err);
+      }
     }
 
     // ============================================================
@@ -2982,6 +3157,7 @@
       } else {
         chatNavBadge.classList.add('hidden');
       }
+      updateHeaderNotifBadge();
     }
 
     // نسخة خفيفة تعيد رسم الشارة من آخر رقم معروف بدون إعادة تحميل قائمة المحادثات بالكامل
@@ -3181,20 +3357,390 @@
       if (banner) banner.classList.add('hidden');
     }
 
-    // 🗑️ حذف كامل المحادثة من قائمتي فقط (لا يحذفها لدى الطرف الآخر)
+    // 🗑️ حذف كامل المحادثة وجميع رسائلها من عندي فقط (لا يحذفها لدى الطرف الآخر).
+    // كل الرسائل تُعلَّم بحقل deletedFor الخاص بي بدل حذف مستند المحادثة نفسه،
+    // فإن بدأتُ المحادثة من جديد تظهر لي فارغة تماماً، بينما يبقى كل شيء
+    // كما هو لدى الطرف الآخر تماماً كأن شيئاً لم يحدث من جهته.
     async function deleteChatForMe(chatId) {
       if (!chatId) return;
-      if (!confirm('هل تريد حذف هذه المحادثة من قائمتك؟ لن يتم حذفها لدى الطرف الآخر، وستظهر مجدداً إذا وصلتك رسالة جديدة.')) return;
+      if (!confirm('هل تريد حذف هذه المحادثة وجميع رسائلها نهائياً من عندك؟ لن يتم حذف أي شيء لدى الطرف الآخر. إذا بدأت المحادثة مجدداً فستبدأ فارغة من طرفك.')) return;
       const user = auth.currentUser;
       if (!user) return;
       try {
-        await db.collection('chats').doc(chatId).update({
+        const chatRef = db.collection('chats').doc(chatId);
+
+        // 1) تعليم كل رسالة موجودة على أنها محذوفة "عندي أنا فقط"
+        const messagesSnap = await chatRef.collection('messages').get();
+        if (!messagesSnap.empty) {
+          const pending = [];
+          let batch = db.batch();
+          let opCount = 0;
+          messagesSnap.docs.forEach(doc => {
+            batch.update(doc.ref, { deletedFor: firebase.firestore.FieldValue.arrayUnion(user.uid) });
+            opCount++;
+            if (opCount === 400) { // البقاء ضمن الحد الآمن لعمليات الدفعة الواحدة في Firestore
+              pending.push(batch.commit());
+              batch = db.batch();
+              opCount = 0;
+            }
+          });
+          if (opCount > 0) pending.push(batch.commit());
+          await Promise.all(pending);
+        }
+
+        // 2) إخفاء المحادثة نفسها من قائمتي حتى تصلني رسالة جديدة
+        await chatRef.update({
           hiddenFor: firebase.firestore.FieldValue.arrayUnion(user.uid)
         });
+
         if (activeChatId === chatId) closeChatWindow();
-        showToast('✅ تم حذف المحادثة', 'info');
+        showToast('✅ تم حذف المحادثة وجميع رسائلها من عندك', 'info');
       } catch (err) {
         console.error("❌ خطأ في حذف المحادثة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
+    }
+
+    // ============================================================
+    // 🧬 خصائص الصديق — القائمة التي تفتح من زر الثلاث نقاط داخل المحادثة
+    // بدلاً من أيقونة سلة المهملات، وتحوي: إدارة الصداقة، إعدادات الدردشة
+    // والإشعارات، وإرسال ملف تعريفي عن هذا الشخص إلى صديق آخر.
+    // ============================================================
+    function openFriendPropertiesModal() {
+      if (!activeChatPartnerUid) return;
+      const name = document.getElementById('chat-partner-name').textContent;
+      const avatar = document.getElementById('chat-partner-avatar').src;
+      document.getElementById('fp-name').textContent = name;
+      document.getElementById('fp-avatar').src = avatar;
+      document.getElementById('modal-friend-properties').classList.remove('hidden');
+    }
+    function closeFriendPropertiesModal() {
+      document.getElementById('modal-friend-properties').classList.add('hidden');
+    }
+
+    // --- 1) إدارة الصداقة: إلغاء الصداقة أو حظر المستخدم ---
+    async function openFriendManagementPanel() {
+      closeFriendPropertiesModal();
+      document.getElementById('modal-friend-management').classList.remove('hidden');
+      const targetUid = activeChatPartnerUid;
+      const blockLabel = document.getElementById('fp-block-label');
+      const user = auth.currentUser;
+      if (!user || !targetUid) return;
+      try {
+        const myDoc = await db.collection('users').doc(user.uid).get();
+        const isBlocked = ((myDoc.data() || {}).blockedUsers || []).includes(targetUid);
+        blockLabel.textContent = isBlocked ? 'إلغاء حظر المستخدم' : 'حظر المستخدم';
+      } catch (e) { /* تجاهل، سيبقى النص الافتراضي */ }
+    }
+    function closeFriendManagementPanel(backToProperties) {
+      document.getElementById('modal-friend-management').classList.add('hidden');
+      if (backToProperties) openFriendPropertiesModal();
+    }
+
+    async function handleUnfriendFromChat() {
+      const targetUid = activeChatPartnerUid;
+      if (!targetUid) return;
+      if (!confirm('هل تريد إلغاء الصداقة مع هذا الشخص؟')) return;
+      try {
+        const newStatus = await performFollowToggle(targetUid);
+        if (newStatus === 'none') showToast('تم إلغاء الصداقة', 'info');
+        closeFriendManagementPanel();
+        closeFriendPropertiesModal();
+      } catch (err) {
+        console.error("❌ خطأ في إلغاء الصداقة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
+    }
+
+    async function handleBlockFromChat() {
+      const user = auth.currentUser;
+      const targetUid = activeChatPartnerUid;
+      if (!user || !targetUid) return;
+      try {
+        const myRef = db.collection('users').doc(user.uid);
+        const myDoc = await myRef.get();
+        const isBlocked = ((myDoc.data() || {}).blockedUsers || []).includes(targetUid);
+
+        if (isBlocked) {
+          if (!confirm('هل تريد إلغاء حظر هذا المستخدم؟')) return;
+          await myRef.update({ blockedUsers: firebase.firestore.FieldValue.arrayRemove(targetUid) });
+          showToast('تم إلغاء الحظر', 'info');
+        } else {
+          if (!confirm('هل تريد حظر هذا المستخدم؟ لن تصلك رسائله أو إشعاراته بعد الآن.')) return;
+          await myRef.update({ blockedUsers: firebase.firestore.FieldValue.arrayUnion(targetUid) });
+          showToast('تم حظر المستخدم 🚫', 'info');
+        }
+        closeFriendManagementPanel();
+        closeFriendPropertiesModal();
+        closeChatWindow();
+      } catch (err) {
+        console.error("❌ خطأ في الحظر:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
+    }
+
+    // --- 2) إعدادات الدردشة والإشعارات: كتم الإشعارات + سياسة حذف المحادثة ---
+
+    // 🕓 وصف مختصر لكل وضع من أوضاع حذف المحادثة الثلاثة، يُعرض تحت الأزرار
+    const AUTO_DELETE_DESCRIPTIONS = {
+      after_view: 'تُحذف رسائل هذه المحادثة من عندك تلقائياً بمجرد مشاهدتها والخروج من نافذة المحادثة.',
+      never: 'لا تُحذف الرسائل تلقائياً أبداً، وتبقى محفوظة عندك حتى تحذفها بنفسك.',
+      '24h_after_view': 'تُحذف كل رسالة من عندك تلقائياً بعد مرور 24 ساعة على مشاهدتك لها.'
+    };
+
+    function renderAutoDeleteChips(activeMode) {
+      document.querySelectorAll('.fp-autodelete-chip').forEach(btn => {
+        const isActive = btn.dataset.mode === activeMode;
+        btn.classList.toggle('border-cyan-400', isActive);
+        btn.classList.toggle('text-cyan-300', isActive);
+        btn.classList.toggle('bg-cyan-500/10', isActive);
+        btn.classList.toggle('border-slate-700', !isActive);
+        btn.classList.toggle('text-slate-400', !isActive);
+      });
+      const desc = document.getElementById('fp-autodelete-desc');
+      if (desc) desc.textContent = AUTO_DELETE_DESCRIPTIONS[activeMode] || AUTO_DELETE_DESCRIPTIONS.never;
+    }
+
+    async function openChatSettingsPanel() {
+      closeFriendPropertiesModal();
+      document.getElementById('modal-chat-settings').classList.remove('hidden');
+      const toggle = document.getElementById('fp-mute-toggle');
+      const dot = document.getElementById('fp-mute-dot');
+      if (!activeChatId) return;
+      try {
+        const chatDoc = await db.collection('chats').doc(activeChatId).get();
+        const data = chatDoc.data() || {};
+        const user = auth.currentUser;
+        const isMuted = (data.mutedFor || []).includes(user.uid);
+        toggle.classList.toggle('bg-cyan-500', isMuted);
+        toggle.classList.toggle('bg-slate-700', !isMuted);
+        dot.classList.toggle('-translate-x-5', isMuted);
+
+        const myAutoDeleteMode = ((data.autoDeleteMode || {})[user.uid]) || 'never';
+        renderAutoDeleteChips(myAutoDeleteMode);
+      } catch (e) { /* تجاهل */ }
+    }
+    function closeChatSettingsPanel(backToProperties) {
+      document.getElementById('modal-chat-settings').classList.add('hidden');
+      if (backToProperties) openFriendPropertiesModal();
+    }
+
+    // يحفظ اختياري لوضع حذف المحادثة (بعد المشاهدة / مطلقاً / 24 ساعة بعد
+    // المشاهدة) — الإعداد خاص بي فقط ولا يؤثر على تجربة الطرف الآخر إطلاقاً
+    async function setAutoDeleteMode(mode) {
+      const user = auth.currentUser;
+      if (!user || !activeChatId) return;
+      try {
+        await db.collection('chats').doc(activeChatId).update({
+          [`autoDeleteMode.${user.uid}`]: mode
+        });
+        renderAutoDeleteChips(mode);
+        showToast('✅ تم تحديث إعداد حذف المحادثة', 'info');
+
+        // فور تفعيل وضع "بعد المشاهدة" أو "24 ساعة بعد المشاهدة" على محادثة
+        // مفتوحة حالياً، نبدأ مباشرة بتعليم رسائلها المعروضة كمُشاهَدة
+        if (mode !== 'never') {
+          await markVisibleMessagesAsViewed(activeChatId, user.uid);
+        }
+      } catch (err) {
+        console.error("❌ خطأ في تحديث إعداد حذف المحادثة:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
+    }
+
+    // 👁️ يعلّم كل رسالة مرئية حالياً (غير محذوفة عندي) بأنها شوهدت مني الآن
+    // إن لم تكن قد شوهدت من قبل — يُستخدم كأساس لوضعَي "بعد المشاهدة" و"24 ساعة"
+    async function markVisibleMessagesAsViewed(chatId, uid) {
+      try {
+        const snap = await db.collection('chats').doc(chatId).collection('messages').get();
+        const pending = [];
+        let batch = db.batch();
+        let opCount = 0;
+        snap.docs.forEach(doc => {
+          const msg = doc.data();
+          if ((msg.deletedFor || []).includes(uid)) return;
+          if (msg.viewedAt && msg.viewedAt[uid]) return;
+          batch.update(doc.ref, { [`viewedAt.${uid}`]: firebase.firestore.FieldValue.serverTimestamp() });
+          opCount++;
+          if (opCount === 400) { pending.push(batch.commit()); batch = db.batch(); opCount = 0; }
+        });
+        if (opCount > 0) pending.push(batch.commit());
+        await Promise.all(pending);
+      } catch (e) { console.error("❌ خطأ في تعليم الرسائل كمُشاهَدة:", e); }
+    }
+
+    // 🧹 يحذف (عندي فقط) أي رسالة مضى على مشاهدتي لها 24 ساعة فأكثر —
+    // يُستدعى عند فتح المحادثة إذا كان وضعي فيها "24 ساعة بعد المشاهدة"
+    async function purgeExpiredViewedMessages(chatId, uid) {
+      try {
+        const snap = await db.collection('chats').doc(chatId).collection('messages').get();
+        const now = Date.now();
+        const pending = [];
+        let batch = db.batch();
+        let opCount = 0;
+        snap.docs.forEach(doc => {
+          const msg = doc.data();
+          if ((msg.deletedFor || []).includes(uid)) return;
+          const viewedTs = msg.viewedAt && msg.viewedAt[uid];
+          if (!viewedTs || typeof viewedTs.toMillis !== 'function') return;
+          if (now - viewedTs.toMillis() >= 24 * 60 * 60 * 1000) {
+            batch.update(doc.ref, { deletedFor: firebase.firestore.FieldValue.arrayUnion(uid) });
+            opCount++;
+            if (opCount === 400) { pending.push(batch.commit()); batch = db.batch(); opCount = 0; }
+          }
+        });
+        if (opCount > 0) pending.push(batch.commit());
+        await Promise.all(pending);
+      } catch (e) { console.error("❌ خطأ في حذف الرسائل منتهية الصلاحية:", e); }
+    }
+
+    // 🚪 يُطبَّق عند فتح المحادثة: ينظّف أولاً أي رسالة منتهية الصلاحية (وضع
+    // 24 ساعة)، ثم يعلّم الرسائل التي سأراها الآن كمُشاهَدة (إن كان أحد
+    // الوضعين مفعّلاً)، قبل عرض الرسائل للمستخدم
+    async function applyAutoDeletePolicyOnOpen(chatId, uid) {
+      try {
+        const chatDoc = await db.collection('chats').doc(chatId).get();
+        const mode = ((chatDoc.data() || {}).autoDeleteMode || {})[uid] || 'never';
+        if (mode === '24h_after_view') {
+          await purgeExpiredViewedMessages(chatId, uid);
+        }
+        if (mode !== 'never') {
+          await markVisibleMessagesAsViewed(chatId, uid);
+        }
+      } catch (e) { console.error("❌ خطأ في تطبيق سياسة الحذف التلقائي عند الفتح:", e); }
+    }
+
+    // 🚪 يُطبَّق عند إغلاق نافذة المحادثة: إن كان وضعي "بعد المشاهدة"، تُحذف
+    // كل رسالة كنت قد شاهدتها للتو (عندي فقط) فور خروجي، كرسائل مؤقتة تختفي
+    // بعد قراءتها ولا تبقى محفوظة عندي إطلاقاً
+    async function applyAutoDeletePolicyOnClose(chatId, uid) {
+      try {
+        const chatDoc = await db.collection('chats').doc(chatId).get();
+        const mode = ((chatDoc.data() || {}).autoDeleteMode || {})[uid] || 'never';
+        if (mode !== 'after_view') return;
+
+        const snap = await db.collection('chats').doc(chatId).collection('messages').get();
+        const pending = [];
+        let batch = db.batch();
+        let opCount = 0;
+        snap.docs.forEach(doc => {
+          const msg = doc.data();
+          if ((msg.deletedFor || []).includes(uid)) return;
+          batch.update(doc.ref, { deletedFor: firebase.firestore.FieldValue.arrayUnion(uid) });
+          opCount++;
+          if (opCount === 400) { pending.push(batch.commit()); batch = db.batch(); opCount = 0; }
+        });
+        if (opCount > 0) pending.push(batch.commit());
+        await Promise.all(pending);
+      } catch (e) { console.error("❌ خطأ في تطبيق سياسة الحذف بعد المشاهدة:", e); }
+    }
+
+    async function toggleChatMute() {
+      const user = auth.currentUser;
+      if (!user || !activeChatId) return;
+      const toggle = document.getElementById('fp-mute-toggle');
+      const dot = document.getElementById('fp-mute-dot');
+      try {
+        const chatRef = db.collection('chats').doc(activeChatId);
+        const chatDoc = await chatRef.get();
+        const isMuted = ((chatDoc.data() || {}).mutedFor || []).includes(user.uid);
+        await chatRef.update({
+          mutedFor: isMuted
+            ? firebase.firestore.FieldValue.arrayRemove(user.uid)
+            : firebase.firestore.FieldValue.arrayUnion(user.uid)
+        });
+        toggle.classList.toggle('bg-cyan-500', !isMuted);
+        toggle.classList.toggle('bg-slate-700', isMuted);
+        dot.classList.toggle('-translate-x-5', !isMuted);
+        showToast(isMuted ? 'تم تفعيل إشعارات هذه المحادثة 🔔' : 'تم كتم إشعارات هذه المحادثة 🔕', 'info');
+      } catch (err) {
+        console.error("❌ خطأ في تبديل كتم الإشعارات:", err);
+        alert('حدث خطأ: ' + err.message);
+      }
+    }
+
+    // --- 3) إرسال ملف تعريفي إلى شخص آخر: يختار المستخدم صديقاً من قائمة
+    // "يتابع" لديه، فتُرسل بطاقة تعريفية (اسم + صورة) بهذا الشخص كرسالة
+    // داخل محادثته مع ذلك الصديق ---
+    async function openShareProfilePanel() {
+      closeFriendPropertiesModal();
+      document.getElementById('modal-share-profile').classList.remove('hidden');
+      const container = document.getElementById('share-profile-list');
+      const user = auth.currentUser;
+      if (!user || !currentUserProfile) {
+        container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">تعذر تحميل قائمة الأصدقاء</div>';
+        return;
+      }
+      const myFriends = (currentUserProfile.following || []).filter(uid => uid !== activeChatPartnerUid);
+      if (myFriends.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">لا يوجد أصدقاء لإرسال الملف إليهم</div>';
+        return;
+      }
+      container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs animate-pulse">جاري التحميل...</div>';
+      try {
+        const profiles = await Promise.all(myFriends.map(async uid => ({ uid, data: await getUserProfileCached(uid) })));
+        container.innerHTML = profiles.map(p => `
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2.5">
+            <img src="${escapeHtml(p.data.avatar)}" class="w-9 h-9 rounded-xl border border-cyan-400 object-cover bg-slate-900">
+            <p class="text-xs font-bold text-white flex-1 truncate">${escapeHtml(p.data.nickname)}</p>
+            <button onclick="sendProfileCardTo('${p.uid}')" class="text-[10px] font-bold px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-black shrink-0">إرسال</button>
+          </div>`).join('');
+      } catch (err) {
+        console.error("❌ خطأ في تحميل قائمة الأصدقاء:", err);
+        container.innerHTML = '<div class="text-center py-4 text-red-400 text-[11px]">تعذر تحميل القائمة</div>';
+      }
+    }
+    function closeShareProfilePanel(backToProperties) {
+      document.getElementById('modal-share-profile').classList.add('hidden');
+      if (backToProperties) openFriendPropertiesModal();
+    }
+
+    async function sendProfileCardTo(recipientUid) {
+      const user = auth.currentUser;
+      const sharedUid = activeChatPartnerUid;
+      if (!user || !recipientUid || !sharedUid) return;
+      try {
+        const sharedProfile = await getUserProfileCached(sharedUid);
+        const chatId = getChatId(user.uid, recipientUid);
+        const chatRef = db.collection('chats').doc(chatId);
+        const chatDoc = await chatRef.get();
+
+        if (!chatDoc.exists) {
+          const [myDoc, targetUserDoc] = await Promise.all([
+            db.collection('users').doc(user.uid).get(),
+            db.collection('users').doc(recipientUid).get()
+          ]);
+          const myData = myDoc.exists ? myDoc.data() : {};
+          const targetData = targetUserDoc.exists ? targetUserDoc.data() : {};
+          const isMutualFriend = (myData.following || []).includes(recipientUid) && (targetData.following || []).includes(user.uid);
+          await chatRef.set({
+            participants: [user.uid, recipientUid],
+            initiatedBy: user.uid,
+            status: isMutualFriend ? 'accepted' : 'pending',
+            lastMessage: '',
+            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+            unreadCounts: {}
+          });
+        }
+
+        await chatRef.collection('messages').add({
+          senderId: user.uid,
+          text: `📇 ملف تعريفي: ${sharedProfile.nickname}`,
+          sharedProfile: { uid: sharedUid, nickname: sharedProfile.nickname, avatar: sharedProfile.avatar },
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await chatRef.update({
+          lastMessage: `📇 ملف تعريفي: ${sharedProfile.nickname}`,
+          lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+          [`unreadCounts.${recipientUid}`]: firebase.firestore.FieldValue.increment(1),
+          hiddenFor: firebase.firestore.FieldValue.arrayRemove(recipientUid)
+        });
+
+        showToast('✅ تم إرسال الملف التعريفي', 'friend');
+        closeShareProfilePanel();
+      } catch (err) {
+        console.error("❌ خطأ في إرسال الملف التعريفي:", err);
         alert('حدث خطأ: ' + err.message);
       }
     }
@@ -3290,6 +3836,11 @@
           return;
         }
 
+        // ⏳ قبل عرض الرسائل: نطبّق سياسة الحذف التلقائي الخاصة بي في هذه
+        // المحادثة (تنظيف الرسائل التي انتهت صلاحيتها بعد 24 ساعة من مشاهدتي
+        // لها، ثم تعليم أي رسالة سأراها الآن كمُشاهَدة)
+        await applyAutoDeletePolicyOnOpen(chatId, user.uid);
+
         activeChatUnsubscribe = chatRef.collection('messages').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
           const container = document.getElementById('chat-messages-container');
           container.innerHTML = '';
@@ -3310,7 +3861,15 @@
 
               const bodyHtml = isDeletedForEveryone
                 ? `<span class="italic text-slate-500"><i class="fa-solid fa-ban ml-1"></i> تم حذف هذه الرسالة</span>`
-                : `${escapeHtml(msg.text)}${msg.edited ? '<span class="text-[9px] opacity-60 mr-1">(معدّلة)</span>' : ''}`;
+                : msg.sharedProfile
+                  ? `<div onclick="event.stopPropagation(); closeChatWindow(); viewUserProfile('${msg.sharedProfile.uid}');" class="flex items-center gap-2 cursor-pointer">
+                       <img src="${escapeHtml(msg.sharedProfile.avatar)}" class="w-9 h-9 rounded-xl border border-cyan-400 object-cover bg-slate-900 shrink-0">
+                       <div class="min-w-0">
+                         <p class="text-[9px] opacity-70"><i class="fa-solid fa-id-card ml-1"></i> ملف تعريفي</p>
+                         <p class="font-bold truncate">${escapeHtml(msg.sharedProfile.nickname)}</p>
+                       </div>
+                     </div>`
+                  : `${escapeHtml(msg.text)}${msg.edited ? '<span class="text-[9px] opacity-60 mr-1">(معدّلة)</span>' : ''}`;
 
               const menuBtn = `<button onclick="openMessageMenu(event, '${chatId}', '${doc.id}', ${isMine}, '${escapeForInlineJs(msg.text || '')}', ${isDeletedForEveryone})" class="self-center text-slate-500 hover:text-cyan-300 px-1 transition"><i class="fa-solid fa-ellipsis-vertical text-[10px]"></i></button>`;
 
@@ -3345,12 +3904,23 @@
     }
 
     function closeChatWindow() {
+      // 🚪 نحفظ هوية المحادثة والمستخدم قبل تصفيرهما لأننا سنحتاجهما بعد
+      // إغلاق النافذة لتطبيق سياسة "حذف بعد المشاهدة" إن كانت مفعّلة
+      const closingChatId = activeChatId;
+      const user = auth.currentUser;
+
       if (activeChatUnsubscribe) { activeChatUnsubscribe(); activeChatUnsubscribe = null; }
       activeChatId = null;
       activeChatPartnerUid = null;
       cancelEditMessage();
       closeMessageMenu();
       document.getElementById('modal-chat-window').classList.add('hidden');
+
+      if (closingChatId && user) {
+        applyAutoDeletePolicyOnClose(closingChatId, user.uid).catch(err => {
+          console.error("❌ خطأ في تطبيق سياسة الحذف بعد المشاهدة:", err);
+        });
+      }
     }
 
     // ============================================================
