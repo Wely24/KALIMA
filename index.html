@@ -3483,9 +3483,9 @@
 
     // 🕓 وصف مختصر لكل وضع من أوضاع حذف المحادثة الثلاثة، يُعرض تحت الأزرار
     const AUTO_DELETE_DESCRIPTIONS = {
-      after_view: 'الرسائل التي تصلك من الطرف الآخر تُحذف من عندك تلقائياً بمجرد مشاهدتها وخروجك من المحادثة. رسائلك أنت المُرسَلة تبقى محفوظة عندك وعنده حتى يشاهدها هو ويخرج من طرفه.',
-      never: 'لا تُحذف الرسائل تلقائياً أبداً، وتبقى محفوظة عندك حتى تحذفها بنفسك.',
-      '24h_after_view': 'الرسائل التي تصلك من الطرف الآخر تُحذف من عندك تلقائياً بعد 24 ساعة من مشاهدتها. رسائلك أنت المُرسَلة لا تتأثر بهذا الإعداد.'
+      after_view: 'إعداد مشترك يُفعَّل تلقائياً عند الطرفين: الرسائل التي تصلك تُحذف من عندك بمجرد مشاهدتها وخروجك من المحادثة، ونفس الشيء يحدث لدى الطرف الآخر مع رسائلك.',
+      never: 'إعداد مشترك: لا تُحذف الرسائل تلقائياً أبداً عند أي من الطرفين، وتبقى محفوظة حتى يحذفها صاحبها بنفسه.',
+      '24h_after_view': 'إعداد مشترك يُفعَّل تلقائياً عند الطرفين: الرسائل التي تصلك تُحذف من عندك تلقائياً بعد 24 ساعة من مشاهدتها.'
     };
 
     function renderAutoDeleteChips(activeMode) {
@@ -3516,8 +3516,8 @@
         toggle.classList.toggle('bg-slate-700', !isMuted);
         dot.classList.toggle('-translate-x-5', isMuted);
 
-        const myAutoDeleteMode = ((data.autoDeleteMode || {})[user.uid]) || 'never';
-        renderAutoDeleteChips(myAutoDeleteMode);
+        // 🔗 إعداد مشترك بين الطرفين: نقرأه من حقل واحد على مستند المحادثة
+        renderAutoDeleteChips(data.autoDeleteMode || 'never');
       } catch (e) { /* تجاهل */ }
     }
     function closeChatSettingsPanel(backToProperties) {
@@ -3525,28 +3525,32 @@
       if (backToProperties) openFriendPropertiesModal();
     }
 
-    // يحفظ اختياري لوضع حذف المحادثة (بعد المشاهدة / مطلقاً / 24 ساعة بعد
-    // المشاهدة) — الإعداد خاص بي فقط ولا يؤثر على تجربة الطرف الآخر إطلاقاً
+    // 🔗 يحفظ وضع حذف المحادثة (بعد المشاهدة / مطلقاً / 24 ساعة بعد المشاهدة)
+    // كحقل واحد مشترك على مستند المحادثة نفسه — فيتفعّل تلقائياً عند
+    // الطرفين معاً بمجرد أن يغيّره أحدهما، وليس عندي أنا فقط
     async function setAutoDeleteMode(mode) {
       const user = auth.currentUser;
-      if (!user || !activeChatId) return;
+      if (!user || !activeChatId || !activeChatPartnerUid) return;
       try {
-        await db.collection('chats').doc(activeChatId).update({
-          [`autoDeleteMode.${user.uid}`]: mode
-        });
+        await db.collection('chats').doc(activeChatId).update({ autoDeleteMode: mode });
         renderAutoDeleteChips(mode);
-        showToast('✅ تم تحديث إعداد حذف المحادثة', 'info');
+        showToast('✅ تم تحديث إعداد حذف المحادثة لدى الطرفين', 'info');
 
-        // فور تفعيل وضع "بعد المشاهدة" أو "24 ساعة بعد المشاهدة" على محادثة
-        // مفتوحة حالياً، نبدأ مباشرة بتعليم رسائلها المعروضة كمُشاهَدة
+        // فور تفعيل وضع "بعد المشاهدة" أو "24 ساعة بعد المشاهدة"، نبدأ مباشرة
+        // بتعليم الرسائل المعروضة عندي حالياً كمُشاهَدة
         if (mode !== 'never') {
           await markVisibleMessagesAsViewed(activeChatId, user.uid);
         }
+
+        // 🔔 نُبلغ الطرف الآخر بأن إعداد حذف المحادثة تغيّر لديه أيضاً
+        const myNick = currentUserProfile ? currentUserProfile.nickname : 'شخص ما';
+        await sendNotificationToUser(activeChatPartnerUid, `غيّر ${myNick} إعداد حذف محادثتكما 🕓`, 'info');
       } catch (err) {
         console.error("❌ خطأ في تحديث إعداد حذف المحادثة:", err);
         alert('حدث خطأ: ' + err.message);
       }
     }
+
 
     // 👁️ يعلّم كل رسالة مرئية حالياً وصلتني من الطرف الآخر (وليست رسالتي أنا)
     // بأنها شوهدت مني الآن، إن لم تكن قد شوهدت من قبل. لا نلمس رسائلي أنا
@@ -3607,7 +3611,7 @@
     async function applyAutoDeletePolicyOnOpen(chatId, uid) {
       try {
         const chatDoc = await db.collection('chats').doc(chatId).get();
-        const mode = ((chatDoc.data() || {}).autoDeleteMode || {})[uid] || 'never';
+        const mode = (chatDoc.data() || {}).autoDeleteMode || 'never'; // 🔗 حقل مشترك بين الطرفين
         if (mode === '24h_after_view') {
           await purgeExpiredViewedMessages(chatId, uid);
         }
@@ -3617,15 +3621,16 @@
       } catch (e) { console.error("❌ خطأ في تطبيق سياسة الحذف التلقائي عند الفتح:", e); }
     }
 
-    // 🚪 يُطبَّق عند إغلاق نافذة المحادثة: إن كان وضعي "بعد المشاهدة"، تُحذف
-    // (عندي فقط) الرسائل التي وصلتني من الطرف الآخر وشاهدتها للتو، فور
-    // خروجي — تماماً كخاصية سناب شات: رسالة الطرف الآخر تختفي من عندي أنا
-    // بعد ما أشاهدها وأخرج، لكن رسالتي أنا التي أرسلتها تبقى محفوظة عندي
-    // وعنده إلى أن يشاهدها هو بنفسه ويخرج من المحادثة من طرفه
+    // 🚪 يُطبَّق عند إغلاق نافذة المحادثة: إن كان الإعداد المشترك للمحادثة
+    // "بعد المشاهدة"، تُحذف (عندي فقط) الرسائل التي وصلتني من الطرف الآخر
+    // وشاهدتها للتو، فور خروجي — تماماً كخاصية سناب شات: رسالة الطرف الآخر
+    // تختفي من عندي أنا بعد ما أشاهدها وأخرج، لكن رسالتي أنا التي أرسلتها
+    // تبقى محفوظة عندي وعنده إلى أن يشاهدها هو بنفسه ويخرج من طرفه — ونفس
+    // الإعداد فعّال تلقائياً لدى الطرفين معاً لأنه حقل واحد مشترك على المحادثة
     async function applyAutoDeletePolicyOnClose(chatId, uid) {
       try {
         const chatDoc = await db.collection('chats').doc(chatId).get();
-        const mode = ((chatDoc.data() || {}).autoDeleteMode || {})[uid] || 'never';
+        const mode = (chatDoc.data() || {}).autoDeleteMode || 'never'; // 🔗 حقل مشترك بين الطرفين
         if (mode !== 'after_view') return;
 
         const snap = await db.collection('chats').doc(chatId).collection('messages').get();
