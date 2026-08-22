@@ -814,6 +814,8 @@
           <button data-mode="after_view" onclick="setAutoDeleteMode('after_view')" class="fp-autodelete-chip text-[9px] font-bold py-2 px-1 rounded-xl border border-slate-700 text-slate-400 transition text-center leading-tight">بعد<br>المشاهدة</button>
           <button data-mode="never" onclick="setAutoDeleteMode('never')" class="fp-autodelete-chip text-[9px] font-bold py-2 px-1 rounded-xl border border-slate-700 text-slate-400 transition text-center leading-tight">مطلقاً</button>
           <button data-mode="24h_after_view" onclick="setAutoDeleteMode('24h_after_view')" class="fp-autodelete-chip text-[9px] font-bold py-2 px-1 rounded-xl border border-slate-700 text-slate-400 transition text-center leading-tight">24 ساعة بعد<br>المشاهدة</button>
+          <button data-mode="instant_reply" onclick="setAutoDeleteMode('instant_reply')" class="fp-autodelete-chip text-[9px] font-bold py-2 px-1 rounded-xl border border-slate-700 text-slate-400 transition text-center leading-tight">فوري بعد<br>الرد</button>
+          <button data-mode="24h_reply" onclick="setAutoDeleteMode('24h_reply')" class="fp-autodelete-chip text-[9px] font-bold py-2 px-1 rounded-xl border border-slate-700 text-slate-400 transition text-center leading-tight">24 ساعة بعد<br>الرد</button>
         </div>
         <p id="fp-autodelete-desc" class="text-[9px] text-slate-500 leading-relaxed"></p>
       </div>
@@ -3240,6 +3242,17 @@
           hiddenFor: firebase.firestore.FieldValue.arrayRemove(activeChatPartnerUid)
         });
 
+        // 💬 إرسالي لهذه الرسالة هو "رد فعلي" على رسائل الطرف الآخر السابقة —
+        // إن كان وضع الحذف المشترك للمحادثة "فوري بعد الرد" أو "24 ساعة بعد
+        // الرد"، نعلّم رسائله على أنها رُدّ عليها الآن (ولا نلمس رسائلي أنا)
+        try {
+          const chatSnapForReply = await chatRef.get();
+          const modeForReply = (chatSnapForReply.data() || {}).autoDeleteMode || 'never';
+          if (modeForReply === 'instant_reply' || modeForReply === '24h_reply') {
+            await markPreviousMessagesAsReplied(activeChatId, user.uid, modeForReply);
+          }
+        } catch (e) { console.error("❌ خطأ في تسجيل الرد على الرسائل:", e); }
+
         const senderNick = currentUserProfile ? currentUserProfile.nickname : 'شخص ما';
         await sendNotificationToUser(activeChatPartnerUid, `📩 ${senderNick}: "${text.substring(0, 30)}..."`, 'message');
 
@@ -3485,7 +3498,9 @@
     const AUTO_DELETE_DESCRIPTIONS = {
       after_view: 'إعداد مشترك يُفعَّل تلقائياً عند الطرفين: الرسائل التي تصلك تُحذف من عندك بمجرد مشاهدتها وخروجك من المحادثة، ونفس الشيء يحدث لدى الطرف الآخر مع رسائلك.',
       never: 'إعداد مشترك: لا تُحذف الرسائل تلقائياً أبداً عند أي من الطرفين، وتبقى محفوظة حتى يحذفها صاحبها بنفسه.',
-      '24h_after_view': 'إعداد مشترك يُفعَّل تلقائياً عند الطرفين: الرسائل التي تصلك تُحذف من عندك تلقائياً بعد 24 ساعة من مشاهدتها.'
+      '24h_after_view': 'إعداد مشترك يُفعَّل تلقائياً عند الطرفين: الرسائل التي تصلك تُحذف من عندك تلقائياً بعد 24 ساعة من مشاهدتها.',
+      instant_reply: 'إعداد مشترك: رسالتك تبقى موجودة عند الطرفين إلى أن يدخل الطرف الآخر ويرسل رداً فعلياً — عندها تُحذف رسالتك من عندك أنت فقط فوراً. مجرد الدخول والخروج دون رد لا يحذف شيئاً.',
+      '24h_reply': 'إعداد مشترك: بمجرد أن يرد عليك الطرف الآخر فعلياً، تبدأ رسالتك (وهي التي رُدّ عليها) بعدّ 24 ساعة، وبعدها تُحذف من عندك أنت فقط. مجرد الدخول والخروج دون رد لا يبدأ العدّ ولا يحذف شيئاً.'
     };
 
     function renderAutoDeleteChips(activeMode) {
@@ -3604,6 +3619,62 @@
       } catch (e) { console.error("❌ خطأ في حذف الرسائل منتهية الصلاحية:", e); }
     }
 
+    // 💬 يُستدعى فور إرسال "replierUid" لرسالة جديدة في المحادثة: يُعتبر هذا
+    // "رداً فعلياً" على كل رسائل الطرف الآخر التي لم يُرَدّ عليها بعد. لا نلمس
+    // رسائل replierUid نفسه (لا يمكن أن يرد المرء على رسالته هو). في وضع
+    // "فوري بعد الرد" نحذف رسائل الطرف الآخر من عنده هو فوراً (وليس عندي أنا)،
+    // وفي وضع "24 ساعة بعد الرد" نكتفي بتسجيل وقت الرد الآن، ويتم الحذف
+    // الفعلي لاحقاً عبر purgeExpiredRepliedMessages بعد مرور 24 ساعة
+    async function markPreviousMessagesAsReplied(chatId, replierUid, mode) {
+      if (mode !== 'instant_reply' && mode !== '24h_reply') return;
+      try {
+        const snap = await db.collection('chats').doc(chatId).collection('messages').get();
+        const pending = [];
+        let batch = db.batch();
+        let opCount = 0;
+        snap.docs.forEach(doc => {
+          const msg = doc.data();
+          if (msg.senderId === replierUid) return; // ⛔ لا نعتبر إرسالي لرسالتي رداً على نفسي
+          if (msg.repliedAt) return; // ✅ رُدّ عليها سابقاً بالفعل
+          if ((msg.deletedFor || []).includes(msg.senderId)) return;
+          const update = { repliedAt: firebase.firestore.FieldValue.serverTimestamp() };
+          if (mode === 'instant_reply') {
+            update.deletedFor = firebase.firestore.FieldValue.arrayUnion(msg.senderId);
+          }
+          batch.update(doc.ref, update);
+          opCount++;
+          if (opCount === 400) { pending.push(batch.commit()); batch = db.batch(); opCount = 0; }
+        });
+        if (opCount > 0) pending.push(batch.commit());
+        await Promise.all(pending);
+      } catch (e) { console.error("❌ خطأ في تعليم الرسائل كمردود عليها:", e); }
+    }
+
+    // 🧹 يحذف (عند صاحب الرسالة فقط) أي رسالة رُدّ عليها فعلياً منذ 24 ساعة
+    // فأكثر — يُستدعى بشكل عام عند فتح أي محادثة (بغضّ النظر عمّن فتحها)
+    // لأن الحذف هنا يخص صاحب الرسالة الأصلي، لا الشخص الذي فتح المحادثة الآن
+    async function purgeExpiredRepliedMessages(chatId) {
+      try {
+        const snap = await db.collection('chats').doc(chatId).collection('messages').get();
+        const now = Date.now();
+        const pending = [];
+        let batch = db.batch();
+        let opCount = 0;
+        snap.docs.forEach(doc => {
+          const msg = doc.data();
+          if (!msg.repliedAt || typeof msg.repliedAt.toMillis !== 'function') return;
+          if ((msg.deletedFor || []).includes(msg.senderId)) return;
+          if (now - msg.repliedAt.toMillis() >= 24 * 60 * 60 * 1000) {
+            batch.update(doc.ref, { deletedFor: firebase.firestore.FieldValue.arrayUnion(msg.senderId) });
+            opCount++;
+            if (opCount === 400) { pending.push(batch.commit()); batch = db.batch(); opCount = 0; }
+          }
+        });
+        if (opCount > 0) pending.push(batch.commit());
+        await Promise.all(pending);
+      } catch (e) { console.error("❌ خطأ في حذف الرسائل منتهية صلاحية الرد:", e); }
+    }
+
     // 🚪 يُطبَّق عند فتح المحادثة: ينظّف أولاً أي رسالة منتهية الصلاحية (وضع
     // 24 ساعة)، ثم يعلّم الرسائل التي وصلتني الآن كمُشاهَدة (إن كان أحد
     // الوضعين مفعّلاً)، قبل عرض الرسائل للمستخدم — كل هذا يخص فقط الرسائل
@@ -3617,6 +3688,11 @@
         }
         if (mode !== 'never') {
           await markVisibleMessagesAsViewed(chatId, uid);
+        }
+        // ⏳ نتحقق من رسائل "24 ساعة بعد الرد" منتهية الصلاحية بغضّ النظر عن
+        // من فتح المحادثة الآن، لأن الحذف هنا يخص صاحب الرسالة الأصلي
+        if (mode === '24h_reply') {
+          await purgeExpiredRepliedMessages(chatId);
         }
       } catch (e) { console.error("❌ خطأ في تطبيق سياسة الحذف التلقائي عند الفتح:", e); }
     }
